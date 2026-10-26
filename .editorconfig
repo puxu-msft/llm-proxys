@@ -1,0 +1,20 @@
+# EditorConfig — https://editorconfig.org
+#
+# Style rules for this repository. The one that matters most here is `max_line_length = off`: fixed 80/120-column hard wrapping is not wanted. Lines stay whole and break at semantic boundaries (a comma, a period) or not at all, and the editor's soft wrap takes care of the rest. A paragraph, a list item, or a sentence is one line.
+#
+# ESLint carries no `max-len` rule, so nothing else enforces a column either.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = off
+
+[*.md]
+# Two trailing spaces are a hard line break in Markdown, so they are significant here.
+trim_trailing_whitespace = false

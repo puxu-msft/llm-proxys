@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents working in this repository. Subdirectories that need different rules carry their own `AGENTS.md` (`open-sse/AGENTS.md`, `tests/translator/AGENTS.md`).
 
 ## Repo & branch policy — READ FIRST
 
@@ -102,6 +102,7 @@ Pre-translate hooks that compress `tool_result` content in-place to cut tokens. 
 
 ## Conventions & gotchas
 
+- **Never hard-wrap lines.** `.editorconfig` sets `max_line_length = off`: keep a sentence, paragraph, or list item on one line and let the editor soft-wrap it. Don't break at a fixed 80/120 column; if a line must be split, split at a semantic boundary (a comma, a period).
 - Plain JavaScript (ESM), no TypeScript. `@/*` path alias → `src/*` (`jsconfig.json`).
 - `custom-server.js` wraps the Next standalone server to derive client IP from the TCP socket and strip attacker-controlled `X-Forwarded-For` — trusting forwarding headers only from a loopback reverse proxy. Preserve this when touching request/IP/rate-limit code.
 - Security-sensitive env: `JWT_SECRET` (session cookie), `INITIAL_PASSWORD` (default `123456` — must override), `API_KEY_SECRET`, `MACHINE_ID_SALT`. Full env contract in `.env.example` and ARCHITECTURE.md's env matrix.
