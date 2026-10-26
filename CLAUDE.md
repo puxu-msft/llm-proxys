@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repo & branch policy — READ FIRST
+
+This checkout is a **personal, private fork**. Changes here are for personal use and are **not** meant to be contributed back upstream.
+
+- Develop on **`xp/main`** — the long-lived personal branch. `master` only mirrors upstream; don't put personal work there.
+- `origin` = `puxu-msft/9router` (private) — the **only push target**; push `xp/main` here.
+- `up` = `decolua/9router` — **read-only upstream, reference only**. Never push to `up`, never open PRs against it. Pull updates with `git fetch up && git merge up/master`.
+- Divergence from upstream is expected and fine — don't "align" local behavior back to upstream unless asked.
+- Private, non-open-source repo: skip upstream-collaboration overhead — no license/SPDX header compliance, no contributor/PR-review ceremony, no release-changelog duties. Keep versioning and commits practical (see the bottom of this file).
+
 ## What this is
 
 9Router (`9router-app`) — a local AI routing gateway + Next.js dashboard. It exposes one OpenAI-compatible endpoint (`/v1/*`) and routes traffic across 40+ upstream providers with format translation, model-combo fallback, multi-account fallback, OAuth/API-key credential management, token refresh, quota/usage tracking, and optional cloud sync.
@@ -30,6 +40,14 @@ CLI package (`cli/`):
 npm run cli:pack       # build + npm pack from root
 cd cli && npm run dev  # nodemon watch
 ```
+
+Docker (our own build — this fork does **not** use the upstream `decolua/9router` image):
+```bash
+./start.sh                      # build 9router:local → smoke-test → swap in place, keeping a rollback container
+docker compose up -d --build    # equivalent via compose
+```
+> Built from this repo and deployed locally against the WSL2 Docker Desktop engine — no registry, no CI publish. The running `9router` container **must** be our build, not the upstream image. Data persists in the `9router-data` volume; secrets come from `.env` (git-ignored, carries `JWT_SECRET`/`INITIAL_PASSWORD`/`API_KEY_SECRET`/`MACHINE_ID_SALT` — keep `MACHINE_ID_SALT` stable). Details in `DOCKER.md`.
+> The public npm registry is **blocked on this network**: npm deps must come from the internal feed. `start.sh`/`docker-compose.yml` default `NPM_REGISTRY` to `https://packagefeedproxy.microsoft.io/npm/` (from `~/.npmrc`); pass `NPM_REGISTRY=…` to override.
 
 Tests (vitest, in `tests/`, an **independent** ESM package — not wired into root `npm test`):
 ```bash
@@ -88,5 +106,5 @@ Pre-translate hooks that compress `tool_result` content in-place to cut tokens. 
 - `custom-server.js` wraps the Next standalone server to derive client IP from the TCP socket and strip attacker-controlled `X-Forwarded-For` — trusting forwarding headers only from a loopback reverse proxy. Preserve this when touching request/IP/rate-limit code.
 - Security-sensitive env: `JWT_SECRET` (session cookie), `INITIAL_PASSWORD` (default `123456` — must override), `API_KEY_SECRET`, `MACHINE_ID_SALT`. Full env contract in `.env.example` and ARCHITECTURE.md's env matrix.
 - Binary/protobuf upstreams (kiro EventStream, cursor protobuf, commandcode NDJSON) don't round-trip through OpenAI — they're handled inside their own executor, not the translator.
-- **Security-first on PRs**: Security is the top priority when reviewing or creating PRs. Audit authentication, credential/token storage & leaks, header manipulation (`X-Forwarded-For`), and SSRF risks before functional logic. Always include explicit security warnings/notes when reporting PR reviews or changes to the user.
+- Security: keep code safe by default — avoid obvious vulns (command injection, SSRF, credential/token leaks, blindly trusting `X-Forwarded-For`). This is a private fork, so there is no upstream PR security-review process to run.
 - Versioning: root and `cli/` are versioned independently; changes are logged in `CHANGELOG.md`. Commit style is Conventional Commits (`fix(translator): …`, `feat(...)`).
