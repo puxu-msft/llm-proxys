@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { FILTERS } from "./filters.js";
+import { FILTERS } from "open-sse/services/modelCatalogFilters.js";
 
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,10 @@
-import { normalizeNousFreeModels } from "open-sse/services/nous.js";
+import { normalizeNousFreeModels } from "./nous.js";
+
+// Catalog normalizers, keyed by the `format` a registry `modelSource` (or a `modelsFetcher`
+// `type`) names. Each turns one upstream catalogue body into `{ id, name, contextLength? }`
+// entries. They are shared by two consumers with different jobs: the dashboard's suggested-model
+// picker fetches anonymously, and `scripts/model-source.mjs` reads the same declarations with a
+// connection's credentials to produce a reference for the static registry lists.
 
 // Free OpenCode models that don't use the "-free" id suffix
 const KNOWN_FREE_OPENCODE_MODELS = ["big-pickle"];
@@ -57,4 +63,30 @@ export const FILTERS = {
       .sort((a, b) => String(a.id).localeCompare(String(b.id))),
 
   "nous-free": normalizeNousFreeModels,
+
+  // A plain OpenAI-shaped /models body, unfiltered. Used as a reference source ("what does this
+  // endpoint offer?") rather than to seed a picker, so nothing is filtered out.
+  openai: (models) =>
+    (Array.isArray(models) ? models : [])
+      .filter((m) => typeof m?.id === "string" && m.id.trim() !== "")
+      .map((m) => ({
+        id: m.id,
+        name: m.name || m.id,
+        contextLength: m.context_length ?? m.contextLength ?? undefined,
+      })),
+
+  // loki's catalogue: { data: [{ id, name?, supported_endpoints: [...] }] }, where the ids are the
+  // UPSTREAM ids. A declared client-facing alias therefore keeps the same upstream id, which is why
+  // `upstreamModelId` is filled in here: it is the key the registry diff matches on. The endpoint
+  // list is carried through as a hint for whoever writes the static entry, since the wire lane is
+  // chosen by model name upstream.
+  loki: (models) =>
+    (Array.isArray(models) ? models : [])
+      .filter((m) => typeof m?.id === "string" && m.id.trim() !== "")
+      .map((m) => ({
+        id: m.id,
+        name: m.name || m.id,
+        upstreamModelId: m.id,
+        endpoints: Array.isArray(m.supported_endpoints) ? m.supported_endpoints : undefined,
+      })),
 };

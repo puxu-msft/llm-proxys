@@ -73,5 +73,12 @@ export default {
     headers: {"HTTP-Referer":"https://endpoint-proxy.local","X-Title":"Endpoint Proxy"},
   },
   modelsFetcher: { url: "https://openrouter.ai/api/v1/models", type: "openrouter-free" },
+  // Reference source for the static `models` list above: the full OpenRouter catalogue, unfiltered.
+  // Distinct from `modelsFetcher` right above, which is the free-tier-only list the dashboard's
+  // model picker offers. Read with `node scripts/model-source.mjs openrouter`.
+  modelSource: {
+    url: "https://openrouter.ai/api/v1/models",
+    format: "openai",
+  },
   passthroughModels: true,
 };

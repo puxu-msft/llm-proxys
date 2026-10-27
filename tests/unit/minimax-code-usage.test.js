@@ -8,7 +8,7 @@ import {
   parsePlanWindows,
   getMiniMaxCodeUsage,
 } from "../../open-sse/services/minimaxCodeUsage.js";
-import { FILTERS } from "../../src/app/api/providers/suggested-models/filters.js";
+import { FILTERS } from "../../open-sse/services/modelCatalogFilters.js";
 import { parseQuotaData } from "../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/utils.js";
 
 describe("minimax-code signed account API", () => {
