@@ -6,6 +6,7 @@ import { resolveOllamaLocalHost, resolveXiaomiTokenplanBaseUrl, PROVIDERS } from
 import { openaiToCommandCodeRequest } from "open-sse/translator/request/openai-to-commandcode.js";
 import { resolveQoderCredentials, resolveQoderModels } from "open-sse/services/qoderModels.js";
 import { probeBedrockCredentials } from "open-sse/executors/bedrock.js";
+import { probeWamCredentials } from "open-sse/shared/wamToken.js";
 import {
   createNousApiKeyProbe,
   getNousApiKeyValidationError,
@@ -248,6 +249,13 @@ export async function POST(request) {
       // would reject bedrock outright and send bedrock-xai to a literal "{region}" host.
       if (AI_PROVIDERS[provider]?.credentialForm === "aws") {
         return NextResponse.json(await probeBedrockCredentials({ apiKey, providerSpecificData }, fetch));
+      }
+
+      // A wam connection has no bearer key either: it names a wam-proxy client and the token is
+      // obtained from there per request. The probe asks for one token, which is the only thing
+      // that can confirm the client id, secret, endpoint and scope all line up.
+      if (AI_PROVIDERS[provider]?.credentialForm === "wam") {
+        return NextResponse.json(await probeWamCredentials({ apiKey, providerSpecificData }, { fetchFn: fetch }));
       }
 
       // Generic probe for webSearch/webFetch providers (config-driven)

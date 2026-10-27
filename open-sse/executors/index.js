@@ -3,6 +3,7 @@ import { AzureExecutor } from "./azure.js";
 import { BedrockExecutor } from "./bedrock.js";
 import { GeminiCLIExecutor } from "./gemini-cli.js";
 import { GithubExecutor } from "./github.js";
+import { LokiExecutor } from "./loki.js";
 import { IFlowExecutor } from "./iflow.js";
 import { QoderExecutor } from "./qoder.js";
 import { KiroExecutor } from "./kiro.js";
@@ -30,11 +31,16 @@ import { DefaultExecutor } from "./default.js";
 import { MinimaxCodeExecutor } from "./minimax-code.js";
 import { DevinCliExecutor } from "./devin-cli.js";
 
+const lokiExecutor = new LokiExecutor();
+// `lk` resolves to the same instance: both names mean one provider, and a second instance would
+// silently diverge the moment this executor grows any per-provider state.
 const executors = {
   antigravity: new AntigravityExecutor(),
   azure: new AzureExecutor(),
   "gemini-cli": new GeminiCLIExecutor(),
   github: new GithubExecutor(),
+  loki: lokiExecutor,
+  lk: lokiExecutor, // Alias for loki
   iflow: new IFlowExecutor(),
   qoder: new QoderExecutor(),
   "qoder-cn": new QoderExecutor("qoder-cn"),
@@ -94,6 +100,7 @@ export { AzureExecutor } from "./azure.js";
 export { BedrockExecutor } from "./bedrock.js";
 export { GeminiCLIExecutor } from "./gemini-cli.js";
 export { GithubExecutor } from "./github.js";
+export { LokiExecutor } from "./loki.js";
 export { IFlowExecutor } from "./iflow.js";
 export { QoderExecutor } from "./qoder.js";
 export { KiroExecutor } from "./kiro.js";

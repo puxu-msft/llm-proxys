@@ -4,6 +4,7 @@ import { testProxyUrl } from "@/lib/network/proxyTest";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { probeBedrockCredentials } from "open-sse/executors/bedrock.js";
+import { probeWamCredentials } from "open-sse/shared/wamToken.js";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
 import { CODEX_CLI_VERSION } from "open-sse/config/appConstants.js";
 import { GROK_CLI_PAGER_USER_AGENT, GROK_CLI_VERSION } from "open-sse/config/grokCli.js";
@@ -574,6 +575,19 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
     }
   }
 
+  // wam connections hold no bearer key either: the credential comes from a wam-proxy instance,
+  // so asking it for one token is the only test that means anything. The stored client secret is
+  // read here, server-side — the edit form never receives it.
+  if (AI_PROVIDERS[connection.provider]?.credentialForm === "wam") {
+    try {
+      return await probeWamCredentials(connection, {
+        fetchFn: (url, options) => fetchWithConnectionProxy(url, options, effectiveProxy),
+      });
+    } catch (err) {
+      return { valid: false, error: err.message };
+    }
+  }
+
   try {
     switch (connection.provider) {
       case "cloudflare-ai": {
@@ -941,7 +955,9 @@ export async function testSingleConnection(id) {
   const start = Date.now();
   let result;
 
-  if (connection.authType === "apikey" || connection.authType === "cookie") {
+  // A wam connection has neither a key nor an OAuth session, but testApiKeyConnection is where its
+  // probe lives; falling through to the OAuth test would report a working connection as errored.
+  if (connection.authType === "apikey" || connection.authType === "cookie" || connection.authType === "wam") {
     result = await testApiKeyConnection(connection, effectiveProxy);
   } else {
     result = await testOAuthConnection(connection, effectiveProxy);

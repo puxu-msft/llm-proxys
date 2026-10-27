@@ -11,10 +11,20 @@ import { DEFAULT_RETRY_CONFIG, FETCH_CONNECT_TIMEOUT_MS } from "../config/runtim
  * @property {string[]}[aliases]      Extra lookup tokens resolving to this provider.
  * @property {string}  [uiAlias]      Token shown in UI badges.
  * @property {string}   category      "apikey"|"oauth"|"freeTier"|... drives UI grouping. REQUIRED.
- * @property {string}  [authType]     "apikey"|"oauth" auth hint.
+ * @property {string}  [authType]     "apikey"|"oauth"|"wam" auth hint. "wam" means the bearer
+ *                                    token is fetched per request from a wam-proxy instance.
  * @property {string[]}[authModes]    Allowed auth modes when provider supports both.
  * @property {boolean} [hasOAuth]     Provider exposes an OAuth flow.
  * @property {boolean} [noAuth]       Provider needs no credentials (local/free).
+ * @property {string}  [credentialForm] Dashboard form for a non-key connection: "aws" renders the
+ *                                    Bedrock fields, "wam" the wam-proxy client registration.
+ * @property {string}  [apiKeyOptionalWith] providerSpecificData field that stands in for an API
+ *                                    key, so a connection with no key still passes the
+ *                                    create/validate gates (Bedrock's "profile",
+ *                                    wam's "wamTokenEndpoint").
+ * @property {Object}  [credentialDefaults] providerSpecificData values a credential form is
+ *                                    pre-filled with, e.g. a deployment's token endpoint.
+ * @property {boolean} [hasProviderSpecificData] Provider stores extra configuration per connection.
  * @property {Object}  [display]      UI: {name,icon,color,textIcon,website,notice,deprecated,deprecationNotice,kindNotice,mediaPriority}.
  * @property {Object}  [transport]    Runtime HTTP config (see TransportConfig below). Builds PROVIDERS[id].
  * @property {Object}  [oauth]        OAuth flow config (see OAuthConfig). Builds PROVIDER_OAUTH[id].

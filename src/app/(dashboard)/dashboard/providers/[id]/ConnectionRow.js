@@ -118,12 +118,15 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
   const rowAuthType = connection.authType || (isOAuth ? "oauth" : "apikey");
   const isOAuthConnection = rowAuthType === "oauth";
   const isCookieConnection = rowAuthType === "cookie";
-  const authIcon = isCookieConnection ? "cookie" : isOAuthConnection ? "lock" : "key";
-  const authLabel = isOAuthConnection ? "OAuth" : isCookieConnection ? "Cookie" : "API Key";
+  // The credential is fetched from a wam-proxy instance per request, so the row shows neither a
+  // pasted key nor an OAuth session.
+  const isWamConnection = rowAuthType === "wam";
+  const authIcon = isCookieConnection ? "cookie" : isWamConnection ? "vpn_key" : isOAuthConnection ? "lock" : "key";
+  const authLabel = isOAuthConnection ? "OAuth" : isCookieConnection ? "Cookie" : isWamConnection ? "WAM" : "API Key";
   const displayName = connection.name?.trim()
     || connection.email?.trim()
     || connection.displayName?.trim()
-    || (isOAuthConnection ? "OAuth Account" : isCookieConnection ? "Cookie Account" : "API Key");
+    || (isOAuthConnection ? "OAuth Account" : isCookieConnection ? "Cookie Account" : isWamConnection ? "WAM Connection" : "API Key");
   const secondaryDisplayName = connection.name?.trim() && connection.email?.trim() && connection.name.trim() !== connection.email.trim()
     ? connection.email.trim()
     : connection.name?.trim() && connection.displayName?.trim() && connection.name.trim() !== connection.displayName.trim()

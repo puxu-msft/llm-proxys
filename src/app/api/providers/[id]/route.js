@@ -5,7 +5,7 @@ import {
   updateProviderConnection,
   deleteProviderConnection,
 } from "@/models";
-import { toProviderConnectionResponse, usesAwsCredentialForm } from "@/lib/providerConnectionResponse";
+import { toProviderConnectionResponse, secretPsdFields } from "@/lib/providerConnectionResponse";
 
 function normalizeProxyConfig(body = {}) {
   const hasAnyProxyField =
@@ -130,18 +130,19 @@ export async function PUT(request, { params }) {
       )
     ) {
       const incomingProviderSpecificData = { ...(providerSpecificData || {}) };
-      const isAwsCredential = usesAwsCredentialForm(existing.provider);
-      // The edit form cannot read the stored token back. An empty password field means
-      // keep the saved credential; null explicitly removes it.
-      if (isAwsCredential && incomingProviderSpecificData.sessionToken === "") {
-        delete incomingProviderSpecificData.sessionToken;
+      // The edit form cannot read a stored secret back. An empty field means keep the saved one;
+      // null explicitly removes it. Which fields count as secret is the provider's business —
+      // AWS's session token and a wam client secret are the same problem.
+      const secretFields = secretPsdFields(existing.provider);
+      for (const field of secretFields) {
+        if (incomingProviderSpecificData[field] === "") delete incomingProviderSpecificData[field];
       }
       updateData.providerSpecificData = {
         ...(existing.providerSpecificData || {}),
         ...incomingProviderSpecificData,
       };
-      if (isAwsCredential && incomingProviderSpecificData.sessionToken === null) {
-        delete updateData.providerSpecificData.sessionToken;
+      for (const field of secretFields) {
+        if (incomingProviderSpecificData[field] === null) delete updateData.providerSpecificData[field];
       }
 
       if (proxyConfig.hasAnyProxyField) {

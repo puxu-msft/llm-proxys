@@ -24,6 +24,13 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
   const [cloudflareData, setCloudflareData] = useState({ accountId: "" });
   const [awsData, setAwsData] = useState({ profile: "", region: "", accessKeyId: "", sessionToken: "" });
   const [clearAwsSessionToken, setClearAwsSessionToken] = useState(false);
+  const [wamData, setWamData] = useState({
+    wamTokenEndpoint: "",
+    wamClientId: "",
+    wamClientSecret: "",
+    wamScope: "",
+    wamCaFile: "",
+  });
   const [region, setRegion] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -60,6 +67,18 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
         });
         setClearAwsSessionToken(false);
       }
+      if (AI_PROVIDERS?.[connection.provider]?.credentialForm === "wam") {
+        const psd = connection.providerSpecificData || {};
+        setWamData({
+          wamTokenEndpoint: psd.wamTokenEndpoint || "",
+          wamClientId: psd.wamClientId || "",
+          // Never sent back to the browser, so it always starts blank and only a new value is
+          // submitted; a blank field keeps whatever is stored.
+          wamClientSecret: "",
+          wamScope: psd.wamScope || "",
+          wamCaFile: psd.wamCaFile || "",
+        });
+      }
       // Load region for providers that support it (e.g. xiaomi-tokenplan)
       const providerCfg = AI_PROVIDERS?.[connection.provider];
       if (providerCfg?.regions) {
@@ -75,6 +94,9 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
   const isAzure = connection?.provider === "azure";
   const isCloudflareAi = connection?.provider === "cloudflare-ai";
   const usesAwsCredentialForm = AI_PROVIDERS?.[connection?.provider]?.credentialForm === "aws";
+  // Credential fetched per request from a wam-proxy instance: no key to edit, only the client
+  // registration that reaches it.
+  const usesWamCredentialForm = AI_PROVIDERS?.[connection?.provider]?.credentialForm === "wam";
   const isCompatible = connection
     ? (isOpenAICompatibleProvider(connection.provider) || isAnthropicCompatibleProvider(connection.provider))
     : false;
@@ -94,6 +116,18 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
     accessKeyId: awsData.accessKeyId.trim(),
     sessionToken: clearAwsSessionToken ? null : awsData.sessionToken.trim(),
   });
+
+  // Only what was filled in is sent. The secret is omitted when blank, which the server reads as
+  // "keep the stored one" — it is never sent back to the browser, so blank is its normal state.
+  const buildWamSpecificData = () => {
+    const data = {};
+    if (wamData.wamTokenEndpoint.trim()) data.wamTokenEndpoint = wamData.wamTokenEndpoint.trim();
+    if (wamData.wamClientId.trim()) data.wamClientId = wamData.wamClientId.trim();
+    if (wamData.wamScope.trim()) data.wamScope = wamData.wamScope.trim();
+    if (wamData.wamCaFile.trim()) data.wamCaFile = wamData.wamCaFile.trim();
+    if (wamData.wamClientSecret.trim()) data.wamClientSecret = wamData.wamClientSecret.trim();
+    return data;
+  };
 
   const handleTest = async () => {
     if (!connection?.provider) return;
@@ -124,6 +158,7 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
           ...(isAzure ? { providerSpecificData: azureData } : {}),
           ...(isCloudflareAi ? { providerSpecificData: cloudflareData } : {}),
           ...(usesAwsCredentialForm ? { providerSpecificData: buildAwsSpecificData() } : {}),
+          ...(usesWamCredentialForm ? { providerSpecificData: buildWamSpecificData() } : {}),
           ...(providerRegions ? { providerSpecificData: buildRegionSpecificData() } : {}),
         }),
       });
@@ -160,6 +195,7 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
                 ...(isAzure ? { providerSpecificData: azureData } : {}),
                 ...(isCloudflareAi ? { providerSpecificData: cloudflareData } : {}),
                 ...(usesAwsCredentialForm ? { providerSpecificData: buildAwsSpecificData() } : {}),
+          ...(usesWamCredentialForm ? { providerSpecificData: buildWamSpecificData() } : {}),
                 ...(providerRegions ? { providerSpecificData: buildRegionSpecificData() } : {}),
               }),
             });
@@ -193,6 +229,9 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
       }
       if (usesAwsCredentialForm) {
         updates.providerSpecificData = buildAwsSpecificData();
+      }
+      if (usesWamCredentialForm) {
+        updates.providerSpecificData = buildWamSpecificData();
       }
       // Persist updated region for region-aware providers
       if (providerRegions && region) {
@@ -229,7 +268,7 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
           onChange={(e) => setFormData({ ...formData, priority: Number.parseInt(e.target.value, 10) || 1 })}
         />
 
-        {!isOAuth && (
+        {!isOAuth && !usesWamCredentialForm && (
           <>
             <div className="flex gap-2">
               <Input
@@ -334,6 +373,47 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
                 />
                 Remove saved session token
               </label>
+            </div>
+          </div>
+        )}
+
+        {usesWamCredentialForm && (
+          <div className="bg-sidebar/50 p-4 rounded-lg border border-accent/20">
+            <h3 className="font-semibold mb-3 text-sm">wam-proxy credentials</h3>
+            <div className="flex flex-col gap-3">
+              <Input
+                label="Token endpoint"
+                value={wamData.wamTokenEndpoint}
+                onChange={(e) => setWamData({ ...wamData, wamTokenEndpoint: e.target.value })}
+                placeholder="http://127.0.0.1:8317/token"
+              />
+              <Input
+                label="Client id"
+                value={wamData.wamClientId}
+                onChange={(e) => setWamData({ ...wamData, wamClientId: e.target.value })}
+                placeholder="loki-ghcp-proxy"
+              />
+              <Input
+                label="Client secret"
+                type="password"
+                value={wamData.wamClientSecret}
+                onChange={(e) => setWamData({ ...wamData, wamClientSecret: e.target.value })}
+                placeholder="Enter a new secret"
+                hint="Leave blank to keep the current secret."
+              />
+              <Input
+                label="Scope (resource)"
+                value={wamData.wamScope}
+                onChange={(e) => setWamData({ ...wamData, wamScope: e.target.value })}
+                placeholder="00000000-0000-0000-0000-000000000000/.default"
+              />
+              <Input
+                label="CA certificate file (optional)"
+                value={wamData.wamCaFile}
+                onChange={(e) => setWamData({ ...wamData, wamCaFile: e.target.value })}
+                placeholder="/etc/ssl/certs/wam-ca.crt"
+                hint="Only needed when wam-proxy serves HTTPS with a private CA."
+              />
             </div>
           </div>
         )}

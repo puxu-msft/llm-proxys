@@ -50,6 +50,29 @@ function stripContentTypes(body, stripList = []) {
   }
 }
 
+// Long-lived prompt caching is an Anthropic API feature, but not every Claude-shaped upstream
+// implements it: one rejects any `cache_control.ttl` other than the default 5 minutes with a 400
+// that names the field. Removing the ttl is the narrow fix — the cache breakpoint itself, which is
+// what the client asked for, stays.
+function dropLongCacheTtl(body) {
+  const stripOne = (block) => {
+    const cache = block?.cache_control;
+    if (!cache || typeof cache !== "object") return;
+    if (cache.ttl === undefined || cache.ttl === "5m") return;
+    const { ttl, ...rest } = cache;
+    block.cache_control = rest;
+  };
+
+  if (Array.isArray(body?.system)) body.system.forEach(stripOne);
+  if (Array.isArray(body?.tools)) body.tools.forEach(stripOne);
+  if (Array.isArray(body?.messages)) {
+    for (const message of body.messages) {
+      if (Array.isArray(message?.content)) message.content.forEach(stripOne);
+    }
+  }
+  return body;
+}
+
 // Role the client's conversation actually ended on, in the source format's own
 // shape — not every source uses messages[] (Gemini/Antigravity: contents[],
 // Responses/Codex: input[]). Only an explicit trailing model/assistant turn is
@@ -150,6 +173,11 @@ export function translateRequest(sourceFormat, targetFormat, model, body, stream
     const apiKey = credentials?.accessToken || credentials?.apiKey || null;
     result = prepareClaudeRequest(result, provider, apiKey, connectionId, credentials?.rawHeaders, clientSessionId);
     if (Array.isArray(result?.messages)) result.messages = ensureTrailingUserTurn(result.messages, clientLastRole);
+    // Some Claude-shaped upstreams refuse a long-lived cache ttl even though the real API accepts
+    // it ("cache_control with a ttl other than 5m is not supported"). Dropping the ttl leaves the
+    // upstream's own 5-minute default in place, which is what the request would have asked for
+    // anyway on a provider that does not keep the longer entry.
+    if (PROVIDERS[provider]?.quirks?.dropLongCacheTtl) dropLongCacheTtl(result);
   }
 
   // Claude cloaking: rename client tools with CLAUDE_TOOL_SUFFIX (anti-ban)

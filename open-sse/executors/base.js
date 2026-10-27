@@ -4,6 +4,8 @@ import { proxyAwareFetch } from "../utils/proxyFetch.js";
 import { dbg } from "../utils/debugLog.js";
 import { ANTHROPIC_API_VERSION, OPENAI_COMPAT_BASE, ANTHROPIC_COMPAT_BASE } from "../providers/shared.js";
 import { resolveOpenAICompatibleApiType } from "../services/provider.js";
+import { resolveWamToken } from "../shared/wamToken.js";
+import { WAM_MIN_EXPIRES_REQUEST_MS } from "../config/wamConstants.js";
 
 /**
  * BaseExecutor - Base class for provider executors
@@ -97,7 +99,40 @@ export class BaseExecutor {
     return { status: response.status, message: bodyText || `HTTP ${response.status}` };
   }
 
+  /**
+   * Resolve a credential that lives outside the connection itself, before anything is sent.
+   *
+   * Only the `wam` authType needs this today: its bearer token is obtained from a wam-proxy
+   * instance, and it has no refresh token, so the shared refresh path (tokenRefresh.js) has
+   * nothing to work with and the background scheduler ignores it. Resolving here, inside
+   * execute(), is what lets buildHeaders stay synchronous — the token is written onto the
+   * credentials object and read back by the normal bearer path. xiaomi-mimo.js does the same
+   * with its account cookie.
+   *
+   * A failure throws rather than falls back: the configuration is wrong, and neither replaying
+   * the request nor rotating to another account can fix that. chatCore turns the throw into a
+   * 502 carrying the reason.
+   */
+  async resolveExternalCredentials(credentials, { log, proxyOptions = null }) {
+    if (credentials?.authType !== "wam") return;
+    // Subclasses that route to more than one endpoint call execute() more than once per request
+    // (see LokiExecutor). Clearing this per request is chatCore's job: it builds a fresh
+    // credentials object for each account attempt.
+    if (credentials.__externalCredentialsResolved) return;
+
+    const token = await resolveWamToken(credentials, {
+      log,
+      proxyOptions,
+      minExpiresIn: WAM_MIN_EXPIRES_REQUEST_MS,
+    });
+    credentials.accessToken = token.accessToken;
+    credentials.expiresAt = new Date(token.expiresAt).toISOString();
+    credentials.__externalCredentialsResolved = true;
+  }
+
   async execute({ model, body, stream, credentials, signal, log, proxyOptions = null, providerOverrides = null }) {
+    await this.resolveExternalCredentials(credentials, { log, proxyOptions });
+
     const fallbackCount = this.getFallbackCount();
     let lastError = null;
     let lastStatus = 0;

@@ -13,7 +13,11 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   const isOllamaLocal = provider === "ollama-local";
   const isCookie = authType === "cookie";
   const isXaiApiKey = provider === "xai" && !isCookie;
-  const credentialLabel = isCookie ? "Cookie Value" : provider === "qoder" || provider === "qoder-cn" ? "Personal Access Token (PAT)" : "API Key";
+  // A credential that is not a key at all: the connection names a wam-proxy client and the token
+  // is fetched per request. There is no key field to show and nothing a bulk line could carry.
+  const usesWamCredentialForm = AI_PROVIDERS?.[provider]?.credentialForm === "wam";
+  const credentialDefaults = AI_PROVIDERS?.[provider]?.credentialDefaults || null;
+  const credentialLabel = isCookie ? "Cookie Value" : usesWamCredentialForm ? "Connection" : provider === "qoder" || provider === "qoder-cn" ? "Personal Access Token (PAT)" : "API Key";
   const credentialPlaceholder = isCookie
     ? (provider === "grok-web" ? "sso=xxxxx... or just the raw value" : "eyJhbGciOi...")
     : (isXaiApiKey ? "xai-..." : provider === "qoder" || provider === "qoder-cn" ? "pt-..." : "");
@@ -51,6 +55,15 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
     accessKeyId: "",
     sessionToken: "",
   });
+  // Pre-filled from the registry's credentialDefaults, so the reference deployment's endpoint,
+  // client id and scope are already in place and only the secret has to be pasted.
+  const [wamData, setWamData] = useState({
+    wamTokenEndpoint: credentialDefaults?.wamTokenEndpoint || "",
+    wamClientId: credentialDefaults?.wamClientId || "",
+    wamClientSecret: "",
+    wamScope: credentialDefaults?.wamScope || "",
+    wamCaFile: "",
+  });
   const [region, setRegion] = useState(defaultRegion);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
@@ -79,6 +92,15 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
     }
     if (isCloudflareAi) {
       return { accountId: cloudflareData.accountId };
+    }
+    if (usesWamCredentialForm) {
+      // Blank means unset, not empty string: `wamTokenEndpoint` is what the create route accepts
+      // in place of an API key, and a whitespace client id would read as configured.
+      const data = {};
+      for (const [key, value] of Object.entries(wamData)) {
+        if (value.trim()) data[key] = value.trim();
+      }
+      return Object.keys(data).length ? data : undefined;
     }
     if (usesAwsCredentialForm) {
       // Only send what the user filled in: an empty `profile` would otherwise select profile
@@ -224,9 +246,10 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   return (
     <Modal isOpen={isOpen} title={`Add ${providerName || provider} ${credentialLabel}`} onClose={onClose}>
       <div className="flex flex-col gap-4">
-        {/* Mode switcher. Hidden for AWS credentials: bulk lines carry only a key, so a
-            Bedrock entry would be saved with no access key id or profile and never work. */}
-        {!usesAwsCredentialForm && (
+        {/* Mode switcher. Hidden for credentials that aren't keys: a bulk line carries only a key,
+            so a Bedrock entry would be saved with no access key id or profile, and a wam entry
+            with no client registration. */}
+        {!usesAwsCredentialForm && !usesWamCredentialForm && (
           <div className="flex gap-2">
             <Button size="sm" variant={mode === "single" ? "primary" : "ghost"} onClick={() => { setMode("single"); setBulkResult(null); }}>Single</Button>
             <Button size="sm" variant={mode === "bulk" ? "primary" : "ghost"} onClick={() => { setMode("bulk"); setBulkResult(null); }}>Bulk Add</Button>
@@ -286,7 +309,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             </div>
           </div>
         )}
-        {!isOllamaLocal && (
+        {!isOllamaLocal && !usesWamCredentialForm && (
           <div className="flex gap-2">
             <Input
               label={credentialLabel}
@@ -409,6 +432,49 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             <p className="text-xs text-text-muted mt-2">
               For static keys instead: put the AWS <strong>secret</strong> access key in the API Key
               field above and the access key id here. A profile, if set, takes precedence.
+            </p>
+          </div>
+        )}
+        {usesWamCredentialForm && (
+          <div className="bg-sidebar/50 p-4 rounded-lg border border-accent/20">
+            <h3 className="font-semibold mb-3 text-sm">wam-proxy credentials</h3>
+            <div className="flex flex-col gap-3">
+              <Input
+                label="Token endpoint"
+                value={wamData.wamTokenEndpoint}
+                onChange={(e) => setWamData({ ...wamData, wamTokenEndpoint: e.target.value })}
+                placeholder="http://127.0.0.1:8317/token"
+              />
+              <Input
+                label="Client id"
+                value={wamData.wamClientId}
+                onChange={(e) => setWamData({ ...wamData, wamClientId: e.target.value })}
+                placeholder="loki-ghcp-proxy"
+              />
+              <Input
+                label="Client secret"
+                type="password"
+                value={wamData.wamClientSecret}
+                onChange={(e) => setWamData({ ...wamData, wamClientSecret: e.target.value })}
+                placeholder="from wam-proxy new-client"
+              />
+              <Input
+                label="Scope (resource)"
+                value={wamData.wamScope}
+                onChange={(e) => setWamData({ ...wamData, wamScope: e.target.value })}
+                placeholder="00000000-0000-0000-0000-000000000000/.default"
+              />
+              <Input
+                label="CA certificate file (optional)"
+                value={wamData.wamCaFile}
+                onChange={(e) => setWamData({ ...wamData, wamCaFile: e.target.value })}
+                placeholder="/etc/ssl/certs/wam-ca.crt"
+              />
+            </div>
+            <p className="text-xs text-text-muted mt-2">
+              There is no API key: the token is fetched from wam-proxy on each request. Plain HTTP
+              only works over loopback — for a wam-proxy on another machine use its HTTPS endpoint
+              and give its CA file here.
             </p>
           </div>
         )}

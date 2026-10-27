@@ -176,7 +176,14 @@ export async function POST(request) {
 
     const newConnection = await createProviderConnection({
       provider,
-      authType: isWebCookieProvider ? "cookie" : "apikey",
+      // A provider whose credential form is neither an API key nor a browser cookie names its
+      // own authType. `wam` connections carry a wam-proxy client registration in
+      // providerSpecificData instead of a secret, and the executor fetches the token per request.
+      // Bedrock keeps "apikey" deliberately: its credentialForm is "aws" but the connection still
+      // stores a key (or names a profile), and the runtime branches on the form, not on authType.
+      authType: AI_PROVIDERS[provider]?.credentialForm === "wam"
+        ? "wam"
+        : (isWebCookieProvider ? "cookie" : "apikey"),
       name: connectionName,
       apiKey: apiKey || "",
       priority: priority || 1,

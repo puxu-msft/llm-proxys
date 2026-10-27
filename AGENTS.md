@@ -87,9 +87,21 @@ Two authoritative docs already exist — read them before working in these areas
 - Translators **self-register** via `register(from, to, reqFn, resFn)` as an import side effect — a new translator file MUST be imported in `open-sse/translator/index.js` or it never runs.
 - Never hardcode role/block/model strings — use `open-sse/translator/schema/` and `open-sse/config/` constants. Config-driven and DRY is enforced by convention here.
 
+### Credentials that live in another service (`wam`)
+- A connection whose `authType` is `wam` stores no secret of its own: it names a wam-proxy instance's OAuth 2.0 client-credentials endpoint, and the bearer token is fetched per request. `open-sse/shared/wamToken.js` does the fetching (its own TTL cache, one in-flight acquisition shared by concurrent callers, nothing cached on failure), and `BaseExecutor.resolveExternalCredentials()` writes the result onto the credentials object before the synchronous `buildHeaders` reads it. The shared refresh machinery is deliberately not involved — it requires a `refreshToken`, and `wam` has none.
+- Its providerSpecificData fields are flat and `wam`-prefixed (see `open-sse/config/wamConstants.js`). `wamClientSecret` / `wamClientCertPassword` are stripped from every provider API response, and the edit path reads a blank secret field as "keep the stored one".
+- `loki` (`lk/`) is the first user: a first-party, internally-hosted model service reachable only with such a token. One endpoint per wire format, routed by model name — the same shape as `github`, and for the same reason (no per-model `targetFormat`). Its private connection values live in `open-sse/config/lokiConstants.js`.
+
+### Model catalogues (`modelSource`)
+- Two different things, often confused. **`modelsFetcher`** is the dashboard's model picker: a URL its route fetches **without credentials** and filters down to what that picker should offer. **`modelSource`** is a *reference* for the static `models[]`: where to read the provider's real catalogue, how to authenticate, how to normalize it. It is read by `node scripts/model-source.mjs <provider>`, which prints what the upstream offers and how it differs from the declared list, so that list is updated deliberately instead of drifting or being replaced at request time.
+- The static list stays authoritative — nothing resolves a `modelSource` on the request path, and a failure to read one never affects serving.
+- Normalizers live in `open-sse/services/modelCatalogFilters.js`, keyed by the `format` a declaration names; do not fetch a catalogue anywhere else.
+- Those two modules must keep **relative imports**: `scripts/*.mjs` run under a plain `node`, where the `@/` and `open-sse/` path aliases do not resolve.
+
 ### Provider registry (`open-sse/providers/registry/*`)
 - One file per provider. `providers/registry/index.js` is an **auto-generated** static import list — regenerate it with `scripts/migrate-registry.mjs` / `injectDisplayToRegistry.mjs`, don't hand-edit.
 - Add a provider: copy `providers/REGISTRY_TEMPLATE.js`, add models to `config/providerModels.js`. Only add an executor for non-OpenAI-compatible upstreams.
+- Adding a provider or alias changes `tests/__baseline__/providers-baseline.json` and `alias-baseline.json`; re-snapshot them deliberately with `snapshot-providers.mjs` and `verify-alias.mjs --snapshot`, and add any new alias token to the `ALIAS_TOKENS` list so later regressions are actually caught.
 
 ### Persistence — IMPORTANT (ARCHITECTURE.md is stale here)
 State is **no longer `db.json`**. It's a SQLite layer under `src/lib/db/` with an adapter fallback chain (`driver.js`): `bun:sqlite` → `better-sqlite3` (optional native dep) → `node:sqlite` (Node ≥22.5) → `sql.js` (pure-JS fallback, always works). `better-sqlite3` is deliberately in `optionalDependencies` so install never fails without build tools.

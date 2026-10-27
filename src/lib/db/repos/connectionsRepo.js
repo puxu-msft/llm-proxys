@@ -188,8 +188,12 @@ export async function createProviderConnection(data) {
         if (incomingUsername || existingUsername) return false;
         return true;
       });
-    } else if (data.authType === "apikey" && data.name) {
-      existing = all.find(c => c.authType === "apikey" && c.name === data.name);
+    } else if (data.name && (data.authType === "apikey" || data.authType === "wam")) {
+      // `wam` behaves like `apikey` here: its identity is the name the user typed, and without a
+      // dedup branch a repeated name would silently append a duplicate instead of reporting the
+      // conflict the caller is supposed to resolve. Matched on the connection's own authType so an
+      // apikey row is never deduped against a wam one (a provider has exactly one credential form).
+      existing = all.find(c => c.authType === data.authType && c.name === data.name);
     }
     // access_token: never dedup — user manages duplicates manually
 
