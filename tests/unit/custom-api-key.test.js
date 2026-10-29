@@ -1,6 +1,4 @@
-// Hand-picked API keys: a weak value (e.g. "sk-dummy") may be stored at create
-// or edit time. Strength is not enforced — only values that cannot travel as an
-// HTTP credential (empty / whitespace) are refused, and duplicates are rejected.
+// 手工密钥：创建/编辑时可存弱值（如 sk-dummy），只拒绝空、含空白或重复的值。
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

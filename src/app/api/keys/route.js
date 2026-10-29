@@ -16,9 +16,7 @@ export async function GET() {
   }
 }
 
-// POST /api/keys - Create new API key
-// A `key` may be supplied to store a hand-picked value (weak values allowed);
-// when omitted, a machine-bound key is generated as before.
+// POST /api/keys - 创建密钥（可传 key 存手工值，允许弱值；不传则生成）
 export async function POST(request) {
   try {
     const body = await request.json();

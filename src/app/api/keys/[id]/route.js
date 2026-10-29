@@ -18,9 +18,7 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT /api/keys/[id] - Update key
-// `name` and `key` may both be edited; a hand-picked `key` (weak values allowed)
-// replaces the generated one, as long as no other key already uses it.
+// PUT /api/keys/[id] - 更新密钥（可改 name/key；key 允许弱值，值重复返回 409）
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;

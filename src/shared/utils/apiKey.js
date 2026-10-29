@@ -96,17 +96,10 @@ export function isNewFormatKey(apiKey) {
   return parsed?.isNewFormat === true;
 }
 
-// Upper bound for a manually supplied API key. Key *strength* is deliberately
-// not enforced — short, low-entropy values (e.g. "sk-dummy") are accepted for
-// local/internal use. Only values that cannot travel as an HTTP credential are
-// refused: empty, whitespace-bearing (breaks `Authorization: Bearer …`), or absurdly long.
+// 手工密钥的最大长度。不校验强度（允许 sk-dummy 这类弱值），只拒绝空、含空白或过长的值。
 export const CUSTOM_API_KEY_MAX_LENGTH = 256;
 
-/**
- * Validate a manually supplied API key value (create or edit).
- * @param {string} value
- * @returns {{ ok: true, value: string } | { ok: false, error: string }}
- */
+/** 校验手工填写的密钥值（创建或编辑）。 */
 export function validateCustomApiKey(value) {
   if (typeof value !== "string") return { ok: false, error: "key must be a string" };
   const key = value.trim();

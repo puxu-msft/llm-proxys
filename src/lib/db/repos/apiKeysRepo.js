@@ -36,10 +36,7 @@ export async function getApiKeyByKey(key) {
   return rowToKey(row);
 }
 
-// Create a key. With no `options.key` a machine-bound key is generated; pass a
-// value to store a hand-picked one instead (its `machineId` is left unset, since
-// it is not derived from the machine). Callers are expected to have validated
-// `options.key` — the /api/keys route uses validateCustomApiKey.
+// 传 options.key 则存手工值（machineId 置空），否则生成机器绑定密钥。key 由调用方校验。
 export async function createApiKey(name, machineId, options = {}) {
   const db = await getAdapter();
   const customKey = options.key ? String(options.key).trim() : "";
