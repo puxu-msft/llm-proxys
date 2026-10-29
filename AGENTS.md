@@ -6,8 +6,8 @@ This file provides guidance to coding agents working in this repository. Subdire
 
 This checkout is a **personal, private fork**. Changes here are for personal use and are **not** meant to be contributed back upstream.
 
-- Develop on **`xp/main`** — the long-lived personal branch. `master` only mirrors upstream; don't put personal work there.
-- `origin` = `puxu-msft/9router` (private) — the **only push target**; push `xp/main` here.
+- Develop on **`9router/master`** — the long-lived personal branch (the repo's default `main` holds only a README pointing here). The local `master` only mirrors upstream; don't put personal work there.
+- `origin` = `puxu-msft/llm-proxys` — the **only push target**; push `9router/master` here.
 - `up` = `decolua/9router` — **read-only upstream, reference only**. Never push to `up`, never open PRs against it. Pull updates with `git fetch up && git merge up/master`.
 - Divergence from upstream is expected and fine — don't "align" local behavior back to upstream unless asked.
 - Private, non-open-source repo: skip upstream-collaboration overhead — no license/SPDX header compliance, no contributor/PR-review ceremony, no release-changelog duties. Keep versioning and commits practical (see the bottom of this file).
