@@ -372,12 +372,7 @@ Two habits from them:
 - app.js 的预算在 2.5 天里被抬了四次，最后一次由 85eef5d87 抬到 1,269,000，期间 app.js 长了 53KB 而什么都没搬出去（#2710）；17557132c 没抬预算也满足了同一个上限。
 - 要抬就先搬点东西出去，或者按 owner 定的增长速率来。
 
-**一个 commit 只做一件事** 自 10-28 起在代码规范里，见 [Moved to the code standards](#moved-to-the-code-standards)。
-
-**提交信息是写出来的，不是默认生成的。**
-
-- 708ae4144（#852）和 81b7016e6（#1028）各自背了约 520KB 的正文：它们的分支把 main 合了进来（#1028 上有 100 个 commit），而 squash 的默认信息会把每个 commit 的信息都列进去，#1028 自己的运行记录在 git 里根本没有。
-- push 之前检查 `git log -1 --format=%B | wc -c` 最多几 KB：subject 是一行短句，其余放正文（10-14 b6e82c6c5 把一整段塞进了 subject）。
+**提交信息不要求干净、原子：历史可以随时改写。** `commit --amend`、`rebase`、`push --force` 都随意，改之前不用额外备份；信息用中文写清改了什么、怎么验证的，就够了。
 
 **两个 session 永远不要在同一个 checkout 里提交** 自 10-18 起在代码规范里，范围已扩到一个 worktree 和它的日志，见 [Moved to the code standards](#moved-to-the-code-standards)。
 
@@ -393,10 +388,6 @@ Two habits from them:
   same day.
 这些规则被看到三天以上才移出去；规则本身和证据在 [docs/code-standards.md](docs/code-standards.md)。在 fork 里由改动者自查时逐条对照。
 
-- **One commit, one goal** (10-05, 10-06, 10-28). On 10-28 6e080ca04
-  answered psikent (/v1/models says every model takes tools) and windy
-  (a group's Context hint names the member a longer conversation skips)
-  under one subject that names only the first.
 - **Never let magpie's default override a value the user set themselves**
   (10-05, 10-10, 10-17). On 10-17 5a2414acd brought every plugins.yml
   without `settled` up once, Essentials to All. A user who had run

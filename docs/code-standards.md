@@ -6,7 +6,7 @@
 
 | 规则 | 检查什么 |
 | --- | --- |
-| 一次改动只做目标需要的事。 | 每一处行为变化都有理由。无关的重构、顺带加的功能、策略调整各自单独一个 commit。 |
+| 一次改动只做目标需要的事。 | 每一处行为变化都有理由；无关的重构、顺带加的功能、策略调整不属于这次改动。 |
 | A fix covers exactly the cases it means to. | Which cases change, and which neighboring ones stay the same. Different errors are not handled as one. |
 | A change holds on the whole path. | Follow it from the user's input to the end result, through the callers, the state it changes and the side effects. One correct function doesn't make the whole operation correct. For example, an agent's model picks are saved under one id and read under another (#926). An update button doesn't update the binary that actually runs (#930). |
 | A fix reaches every sibling of the bug. | Grep for the same pattern: every agent, subcommand, guard of the same shape and caller of a changed predicate gets the fix in the same change. That includes the other branches of the same operation and the other messages that name the same endpoint or rule. On 2026-10-05 six fixes needed a second release because they covered only the case in the report. On 10-06 #933's Codex models followed an hour after its sign-in. On 10-07 cd8d64a9 (#1059) offered sub2api's balance URL in one hint, while the error shown after a failed balance read still names only new-api's. Pi's whole-file move of mcp.json had no backup until d40fee80 (#1097), though the merge branch beside it already had one. |
@@ -135,11 +135,9 @@
 
 ## Commits
 
-commit 信息先点出改动的区域，再说用户看到什么，用平实的行为语言写：`gateway: a 429 that says the balance is spent is out of credit, not a rate limit`。有对应的上游 issue 就写上编号。正文写清怎么验证的、哪个测试去掉改动就会失败。
+commit 信息写中文，先点出改动的区域，再说用户看到什么，用平实的行为语言写：`gateway: a 429 that says the balance is spent is out of credit, not a rate limit`。
 
-「跑了什么」的记录要写在 commit 正文里，让后来的人找得到：不要只放在 push notes、聊天或分支上。没有正文的大 commit 事后无法核对：586f2bce 改了 5133 行却只有一行标题。10-12 fjrtdk 的 ea3d480ed（+237）和 liubing 的 1cd814004（+505）落地时没有记录，随后针对它们的 commit 找出了真 bug（1f0ff81df、9935119f1）。10-13 3ccbe6bc1（plugin runtime P0，2137 行）把整套测试的结果写进「push notes」，结果漏了两个 GUI 测试变红，当晚才被 2dcc51417 发现。
-
-一个 commit 只做一件事。两个 bug 一起修就是两个 commit，各自有自己的记录，回退时能只拿掉一个、留下另一个，也能看清哪个测试守着哪处改动；路上顺手发现的问题单独一个 commit。653cb8ee 把 ZCode 登录和 WSL 会话删除混在一起，1e0829b1 把 ja/de 的修复藏在一次 Usage 改动里。10-28 6e080ca04 把 psikent 的 /v1/models tools 标记和 windy 的路由分组 Context 提示这两件事（分别在 gateway 和 GUI 两层）放进同一个 subject，而 subject 只说了第一件。
+本 fork 不要求提交信息或提交本身干净、原子：一件事放几个 commit、几件事合成一个 commit，都按当时的节奏来；正文里能看出怎么验证的、或哪个测试去掉改动会失败，就够了。历史可以随时改写——`commit --amend`、`rebase`、`push --force` 都随意，改之前不需要额外备份。
 
 A checkout, a worktree and the logs in it belong to the session that made
 them. Work in a worktree of your own (`git worktree add --detach`), never
