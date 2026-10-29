@@ -41,6 +41,8 @@ docker compose down        # removes the container, keeps the 9router-data volum
 
 ## Rollback
 
+The previous container is kept as `9router-rollback-<timestamp>` with its restart policy cleared, so it cannot come back on a Docker/host restart and steal the port.
+
 ```bash
 docker stop 9router && docker rm 9router
 docker rename 9router-rollback-<timestamp> 9router
@@ -73,9 +75,11 @@ DATA_DIR=/app/data
 └── ...                   # certs, logs, runtime configs
 ```
 
-## Headroom (optional)
+## Headroom
 
-Not enabled in the current deployment. If needed, run Headroom as a sidecar and set `HEADROOM_URL=http://headroom:8787` on the `9router` service.
+Token-compression sidecar (image `ghcr.io/chopratejas/headroom:latest`). Both `start.sh` and `docker-compose.yml` run it bound to `127.0.0.1:8787` and point 9Router at `http://headroom:8787`. `start.sh` puts both containers on a user-defined network (`9router-net`) so the container name resolves.
+
+Pulling the image needs `ghcr.io` reachable; the sidecar itself is optional. Enable it in the dashboard: `Endpoint` → `Token Saver` → `Headroom`.
 
 ## Build registry
 
