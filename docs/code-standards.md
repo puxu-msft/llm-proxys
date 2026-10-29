@@ -1,15 +1,12 @@
 # Code standards
 
-These rules come from what PR reviews keep asking for. A reviewer checks
-each one, and a PR that doesn't meet one gets a comment saying which. How to
-describe and review a change to a subsystem is in the
-[subsystem references](subsystems/README.md).
+这些规则来自历次改动里反复被提的问题。改动收尾前逐条自查；哪条没做到就补上，不要带着它落地。子系统改动的描述与自查方式见[子系统参考](subsystems/README.md)。
 
 ## What a change contains
 
-| Rule | What a reviewer looks at |
+| 规则 | 检查什么 |
 | --- | --- |
-| A change does only what its goal needs. | Every change in behavior has a reason. Unrelated refactors, extra features and policy changes go in a PR of their own. |
+| 一次改动只做目标需要的事。 | 每一处行为变化都有理由。无关的重构、顺带加的功能、策略调整各自单独一个 commit。 |
 | A fix covers exactly the cases it means to. | Which cases change, and which neighboring ones stay the same. Different errors are not handled as one. |
 | A change holds on the whole path. | Follow it from the user's input to the end result, through the callers, the state it changes and the side effects. One correct function doesn't make the whole operation correct. For example, an agent's model picks are saved under one id and read under another (#926). An update button doesn't update the binary that actually runs (#930). |
 | A fix reaches every sibling of the bug. | Grep for the same pattern: every agent, subcommand, guard of the same shape and caller of a changed predicate gets the fix in the same change. That includes the other branches of the same operation and the other messages that name the same endpoint or rule. On 2026-10-05 six fixes needed a second release because they covered only the case in the report. On 10-06 #933's Codex models followed an hour after its sign-in. On 10-07 cd8d64a9 (#1059) offered sub2api's balance URL in one hint, while the error shown after a failed balance read still names only new-api's. Pi's whole-file move of mcp.json had no backup until d40fee80 (#1097), though the merge branch beside it already had one. |
@@ -17,28 +14,25 @@ describe and review a change to a subsystem is in the
 | A failed read, parse or hash means "unknown". | It never means "empty", "none" or "equal". Keep what was read before, copy a file that doesn't parse aside before writing over it, and fix the shared reader rather than writing a strict one beside it. A list that guards access (an allow list, a key limit) fails closed when its file can't be read. Test with the file unreadable. readLogins wrote a parse error back as "no accounts" (b363327d), and agent/stash.go had the same bug two days later (270b5257). On 10-12 7a9490638's IP allow list read an unreadable settings.json as an empty list and let every address in (7d9382db2). On 10-13 #2017's patch read an unreadable codex-autoreset.json as "no reset spent" (e297a8ab2). |
 | Another app's values come from that app. | When magpie writes another app's file or speaks for it, take each field's type and value from that app's own data, binary, merge code or docs, not only its field names. 84554e57 wrote updatedAt in milliseconds and hung Claude Desktop's skills page (#863). #966 guessed Codex's limit_reached, which #996 undid after reading ChatGPT.app. On 10-13 accc8c090 copied Claude Code's OAuth client names but sent its own redirect_uri (127.0.0.1, where Claude Code sends localhost); e0ecf0161 read the binary and fixed it. |
 | Nothing that can block runs under a lock its reader needs. | Never send on a channel or call anything that can block while holding a lock the receiver takes first. Set shared state before the handoff that lets another goroutine look at it, and a struct copied by value that holds a map is not a copy. A fake server's handler runs on many goroutines: guard what it records with a lock, and count only the calls the test makes, since background reads reach it too. A change that starts a goroutine or timer runs `-race` before it is pushed. 85fd35ab hung macOS -race CI (4fb8e887). 01e66e0f's marshal wrote into a shared map (15afd988). On 10-11 7cba316b9's turn-done timer read fields on its own goroutine and went red under -race (a2afc1828). On 10-13 TestKeptLoginStandsAtItsPlace's fake Codex appended from two goroutines (a75de4c21). |
-| magpie's default never overrides a value the user set. | Before writing a key, list everywhere the agent or magpie reads that setting from, and test with a user-set value present. A migration that rewrites a setting names the users who set it themselves, and leaves their value alone or says in the release why not. CLAUDE_CODE_AUTO_COMPACT_WINDOW overrode the user's own autoCompactWindow for ~150 releases (602d4ec6). On 10-10 four fixes (603dc0c4, 5aca7d09, c65d9fb4, d9bf7c1c) each started without a test holding a user-set value. On 10-17 5a2414acd turned every unmarked Essentials preset into All, including one a user picked with `magpie plugin preset essentials` (#2749). |
+| magpie 的默认值不覆盖用户自己设的值。 | 写一个 key 之前，列出 agent 或 magpie 会从哪里读这个设置，并带上用户自己设的值来测。迁移要重写某个设置时，先点名那些自己设过它的人，保留他们的值，或者在 commit 正文里说明为什么不改。CLAUDE_CODE_AUTO_COMPACT_WINDOW 覆盖了用户自己的 autoCompactWindow，持续了约 150 个版本（602d4ec6）。10-10 有四个修复（603dc0c4、5aca7d09、c65d9fb4、d9bf7c1c）一开始都没有带用户设值的测试。10-17 5a2414acd 把所有没标 settled 的 Essentials 预设一并抬成 All，其中包含用户自己跑过 `magpie plugin preset essentials` 的那份（#2749）。 |
 | Checks cover the edges the change touches. | For numbers, check the boundaries. For paths, check each platform (macOS, Linux, Windows). For concurrency, check races and stale state. Pick checks by risk. |
 
 ## Tests
 
-| Rule | What a reviewer looks at |
+| 规则 | 检查什么 |
 | --- | --- |
-| A fix comes with a test that fails without it. | The reviewer puts the old code back and runs the test, and the test must fail. A PR description says what it failed with. A test named for a guarantee goes red when that guarantee is broken by hand: #1318's TestHistoryWriteHoldsNoWaiter passed with the waiter held (#1358). On 10-12 bbe8825c0's memo test passed with its eviction reversed (9dd5917a4), and on 10-13 e21b1dbc1's tests passed with is_error dropped (cc93b566e). |
+| 修复必须带一个去掉它就失败的测试。 | 把旧代码放回去跑该测试，它必须失败；commit 正文写明失败信息。为某个保证命名的测试，把该保证手动破坏后必须变红：#1318 的 TestHistoryWriteHoldsNoWaiter 在 waiter 被持有（#1358）时仍然通过；10-12 bbe8825c0 的 memo 测试在淘汰逻辑反转后仍通过（9dd5917a4），10-13 e21b1dbc1 的测试在丢掉 is_error 后仍通过（cc93b566e）。 |
 | A test never reaches the network. | A vendor's page or API is served from httptest, built from bytes saved from the real one. A package comes from a lock file, not a registry's latest. Break the change and watch where the test's requests go. 9755201b opened ChatGPT and hung on its Cloudflare challenge. On 10-11 a library test reached the real GitHub with the icon proxy off (f04792f9). On 10-13 TestPiPackage tested npm's latest pi that minute (f230fa23b), and plugin and cli tests waited 30s on the real models.dev (bde11c778). |
 | Tests use real inputs. | Fixtures look like real requests, real serialized output and real files on disk. That includes missing fields, empty values and defaults. |
 | Tests check behavior, not implementation. | Assert what the user or caller needs. Formatting changes and internal refactors shouldn't break a test, unless exact bytes are the requirement. |
-| A test that fails on `main` is a bug to fix now. | "Fails the same on origin/main" is not a baseline, and neither is "fails under the full run, passes alone". Fix it at its cause, or open an issue naming the cause, in a commit of its own, before shipping on top of it. From 10-05 to 10-07 dozens of commits shipped past red tests. Some were real bugs: a data race (a45b3e09), test order (bfe8bcaf), and click-scroll red since 5d871723 while dcbae2ef, 76d82528 and b2345078 shipped past it. Run `go test -race -count=20 -run X` before calling a Go test a flake. |
-| A red's issue is read to its last comment, and a patch on it is taken first. | Before filing, commenting on or shipping past a red, search its test's name and read every comment. "Seen again" is not work on it: take it, or say who has it. A patch posted there is reviewed and ported before anyone writes another. #1794 got four "seen again" comments before anyone took it (10-12). #2444 had ump45nose's patch for 22 hours while two sessions commented, until CI went red at f191d6423 (10-17). JoeyWu-tech's #3568 patch, with red-on-old tests, waited three days until 0a7633136's CI went red and 11c427eaa ported it (10-28). |
+| main 上失败的测试，是现在就修的 bug。 | 「在 origin/main 上也是一样失败」不是基线，「整个 run 才失败、单独跑能过」也不是。在它的成因处修掉，并单独用一个 commit 记录，再在它上面继续做。10-05 到 10-07 有几十个 commit 带着红测试落地，其中有些是真 bug：一个 data race（a45b3e09）、测试顺序（bfe8bcaf），以及 click-scroll 自 5d871723 起就红着，dcbae2ef、76d82528 和 b2345078 都从它上面过去了。把一个 Go 测试称为 flake 之前，先跑 `go test -race -count=20 -run X`。 |
 | Tests stay out of the real machine. | Run them under a temp HOME with Go's caches pinned (see the snippet in [provider-plugins.md](subsystems/provider-plugins.md)). Never touch a real agent's config or `~/.config/magpie`. An agent's variable goes in `agentenv.Vars`, so the sandbox clears it. |
 | Whatever a test starts ends when the test does. | A fake process, a goroutine or an async refresh a test sets going is stopped or waited for before the test returns, or it writes into the next test's folder ("directory not empty") or spins for days. A package that isolates itself in its own `TestMain` instead of `testenv.Run` sets what testenv sets, `testenv.Marker` included. TestClaudeSignInByPaste's fake polled for 2 days (38a0f470). On 10-11 a CLI-identity ask outliving its test broke the next one (#1524): 4ee3a76b fixed it in internal/gateway only, 9c377231 for every package through the marker, which the gateway never set (a349de82). |
 | A timing test leaves room on both sides. | Never bound a test by wall-clock time a loaded runner can exceed, and keep a threshold classifier's fixture far from every threshold it has. Reproduce a timing failure by injecting the delay (a held write, a late first arrival), not by rerunning until it fails, and list every timing assumption in the test when fixing one. 319b72c7 fixed one of two loops sharing a 2000-line bound and the other went red 9h later (229ce19a). On 10-11 TestMaxRPM's flake was a real gap: a first request that reached the vendor late let the vendor see one too many in its minute (ce1ecaa4), and the queued-stream tests timed the client's clock under CPU starvation (3f4287e6). |
 
 ## Acceptance criteria
 
-A change is merged or released only when it shows each of the following.
-Say which ones were run and what they printed. A check that wasn't run is
-listed as not run, never left out.
+一个改动只有在满足下面每一条时才算做完。写清哪些跑了、输出了什么；没跑的列为「未跑」，不要省略。
 
 1. **A test that fails without the change.** Put the old code back and run
    the new test. It must fail with a real `FAIL` that names the behavior. A
@@ -106,85 +100,25 @@ listed as not run, never left out.
    menu instead of `<select>`, no scroll on click, no colored left-border
    stripes.
 
-A PR is merged only after a maintainer has pulled it, merged it onto
-current `main` and run the checks above on the result. The merge names the
-commit that was reviewed: `gh pr merge --match-head-commit <reviewed sha>`.
-A push made during the review then stops the merge, rather than shipping
-code nobody ran. A head pushed after the review is reviewed again, and the
-comment names the new head (#974 was merged without that). Write on the PR
-what was run, at which head, and then merge: a merge with no record of what
-was run can't be checked afterwards (#981, #1000, #1030, #1037). On 10-07
-#1045, #1046, #1047, #1049, #1057, #1060, #1061 and #948 are the model.
-Each names its reviewed head and what was run, posted before the merge. A
-Draft PR can't be merged until it is marked Ready for review.
+改动以 commit 的形式落到 `magpie/main`，在自己的 worktree 里做，commit 正文写明跑了什么、在哪个 tree 上跑的。本 fork 没有评审环节、也没有发布流程：验收标准由改动者自己跑，`make test`（GUI 用 `make test-ui`）代替 CI 绿灯；没有运行记录的改动，事后无从核对。
 
-A release counts only when all of these hold:
+被移动的订阅在 npm 上发布了新版本时，mover 的 `min` 当天就要抬到那个版本，因为 `keepMovedCurrent` 只按 `min` 安装。把版本写进 mover 的 `min` 之前，先 `npm view <package>@<version> --prefer-online` 确认；zed 0.1.9（10-18）和 factory 0.1.38（10-24，10-28 才在 490c0a4ad 抬起）在逐个比对 npm 之前一直没人拿到。
 
-- A CI Test run on the tagged commit, or a later one containing it, finished
-  green. A run cancelled by the next push is not a pass.
-- The tag `vX.Y.Z` is on `main`, an ancestor of `origin/main`.
-- The release in `yetone/magpie-releases` has all 16 assets.
-- That release is marked Latest, the highest version.
+## 改动完成前的自查
 
-Check `git tag` for the next free version first, because releases can be
-made from more than one place. `git fetch --tags` and check the commit
-isn't tagged already: on 10-12 two sessions tagged 396a6a3d4 a minute
-apart, and the lower v0.1.1192 became Latest. A tag is not a release:
-check the release exists with its 16 assets before naming the version to
-anyone, and file a release whose build failed instead of letting the next
-tag cover it. v0.1.1213 (hdiutil "Resource busy") and v0.1.1218 (notarising
-lost the network) were never published, and nobody noticed the first for
-1.5 hours (#1846). The same holds for a plugin version: `npm view
-<package>@<version> --prefer-online` before a mover's `min` or a reply
-names it. A plugin version published for a moved subscription
-raises its mover's `min` to that version the same day, since
-`keepMovedCurrent` installs only `min`: zed 0.1.9 (10-18) and factory
-0.1.38 (10-24, raised 10-28 in 490c0a4ad) reached nobody until a review
-compared every mover with `npm view --prefer-online`. A PR that
-only adds tests doesn't get a release of its own.
+下面这些来自最近的评审，逐条对照自己这次的改动：
 
-## Reviewing a PR
-
-These patterns come from recent reviews. A reviewer checks each one that
-applies:
-
-- **Run it.** Pull the head, merge it onto current `main` (resolving
-  conflicts if needed) and run the acceptance checks. Reading the diff alone
-  isn't a review.
-- **Break it on purpose.** Revert the fix, or break the code it guards in
-  several ways, and check that the new tests catch each break (#901 broke
-  `backup.go` four ways). A reviewer may add review tests of their own
-  (#829–#831).
-- **Check the vendor, not the PR's account of it.** Read the upstream source
-  for a vendor's behavior (#870 read Codex's
-  `uses_openai_actor_authorization`). Try the change against a real upstream:
-  #853 found that most Chat upstreams don't continue a trailing assistant
-  message.
-- **Check each platform and architecture.** An `int` conversion that is safe
-  on arm64 can wrap on `GOARCH=amd64` (#877). Windows reports a refused
-  connection as `WSAECONNREFUSED`, which `syscall.ECONNREFUSED` doesn't
-  match (#805).
-- **Follow the whole path.** Check that a pick is saved and read under the
-  same id (#926). Check that a button works on the thing that actually runs
-  (#930). Check that aliases and User-Agents don't collide with another
-  agent's (#926). Every name in `agentenv.Vars` is treated as a folder path
-  unless it is in `agentenv.NotPaths` (#922).
-- **Classify narrowly.** A mark or error class covers only the case it
-  describes: #873 counted every failure on a turn as "turned away".
-- **A preview writes nothing.** A dry run, plan or preview has no side
-  effects (#827).
-- **Don't reverse deliberate decisions.** The scroll guard, the button
-  cursor and other product decisions are the maintainer's to change (#820,
-  #921). A PR that changes one is left for the maintainer.
-- **GUI suites.** Compare pass counts with `main`. A test that fails on
-  `main` too is not a baseline (see [Tests](#tests)). A PR that says its
-  failures "fail the same on origin/main" gets that checked, and gets them
-  fixed or filed before the merge.
-- **Docs match the source.** A reference is checked against the code it
-  links, and every link must resolve (#889).
-- **Keep the PR to its goal.** Unrelated tests and refactors go in a PR of
-  their own. Comments name functions, not line numbers. Fixture names match
-  what they stand for (#901).
+- **真的跑一遍。** 把改动构建出来，在结果上跑验收标准；只看 diff 不算自查。
+- **故意弄坏它。** 把修复回退，或用几种方式破坏它保护的那段代码，确认新测试每次都能抓住（#901 用四种方式破坏了 `backup.go`）。
+- **查厂商本身，而不是改动对它的转述。** 厂商行为要读上游源码（#870 读了 Codex 的 `uses_openai_actor_authorization`）。拿改动去撞真实上游：#853 发现多数 Chat 上游不会续写结尾的 assistant 消息。
+- **每个平台和架构都要看。** 在 arm64 上安全的 `int` 转换在 `GOARCH=amd64` 上可能回绕（#877）。Windows 把被拒绝的连接报成 `WSAECONNREFUSED`，`syscall.ECONNREFUSED` 匹配不上（#805）。
+- **看完整条路径。** 检查一个选择是不是存和读用同一个 id（#926）、按钮作用在实际运行的那个东西上（#930）、别名和 User-Agent 不会和别的 agent 撞名（#926）。`agentenv.Vars` 里的名字除 `agentenv.NotPaths` 外都按文件夹路径处理（#922）。
+- **归类要窄。** 一个标记或错误类别只覆盖它描述的那种情况：#873 把一轮里的所有失败都算成「被拒绝」。
+- **预览不写任何东西。** dry run、plan、preview 都没有副作用（#827）。
+- **不要推翻既有的产品决定。** 滚动护栏、按钮光标这类决定属于上游，只有被明确要求时才反转。
+- **GUI 套件。** 通过数与 `main` 对比；在 `main` 上也失败的测试不是基线（见 [Tests](#tests)）：修掉或记录下来，绝不带着它继续。
+- **文档要对得上源码。** 参考页要对着它链接的代码核对，链接必须都能打开（#889）。
+- **改动只做自己的目标。** 无关的测试和重构各自单独一个 commit；注释写函数名不写行号；fixture 的名字要对得上它代表的东西（#901）。
 
 ## Go
 
@@ -201,31 +135,11 @@ applies:
 
 ## Commits
 
-A commit message names the areas it changes, then says what the user now
-sees, written as plain behavior: `gateway: a 429 that says the balance is
-spent is out of credit, not a rate limit`. Give the issue number or the
-reporter. The body says how it was verified, and which test fails without
-the change.
+commit 信息先点出改动的区域，再说用户看到什么，用平实的行为语言写：`gateway: a 429 that says the balance is spent is out of credit, not a rate limit`。有对应的上游 issue 就写上编号。正文写清怎么验证的、哪个测试去掉改动就会失败。
 
-The record of what was run is in the commit body, where a later review can
-read it: not in push notes, a chat or only on the PR. A large commit with
-no body can't be reviewed afterwards: 586f2bce changed 5133 lines with a
-subject only. On 10-12 fjrtdk's ea3d480ed (+237) and liubing's 1cd814004
-(+505) were applied with no record, and their review commits found real
-bugs in them (1f0ff81df, 9935119f1). On 10-13 3ccbe6bc1 (plugin runtime
-P0, 2137 lines) put its full-suite results in "the push notes"; it had
-left two GUI tests red, found by 2dcc51417 the same evening. When a
-community commit is applied without a body, the review commit says what
-was run against that author's code.
+「跑了什么」的记录要写在 commit 正文里，让后来的人找得到：不要只放在 push notes、聊天或分支上。没有正文的大 commit 事后无法核对：586f2bce 改了 5133 行却只有一行标题。10-12 fjrtdk 的 ea3d480ed（+237）和 liubing 的 1cd814004（+505）落地时没有记录，随后针对它们的 commit 找出了真 bug（1f0ff81df、9935119f1）。10-13 3ccbe6bc1（plugin runtime P0，2137 行）把整套测试的结果写进「push notes」，结果漏了两个 GUI 测试变红，当晚才被 2dcc51417 发现。
 
-One commit has one goal. Two reports fixed together are two commits,
-each with its own record, so a revert takes back one and keeps the other,
-and a review can tell which test guards which change. A fix found on the
-way goes in a commit of its own. 653cb8ee bundled ZCode sign-in with WSL
-session deletion, and 1e0829b1 hid a ja/de fix inside a Usage change. On
-10-28 6e080ca04 put psikent's /v1/models tools flag and windy's routing
-group Context hint, two reports in two layers (gateway, GUI), under one
-subject that names only the first.
+一个 commit 只做一件事。两个 bug 一起修就是两个 commit，各自有自己的记录，回退时能只拿掉一个、留下另一个，也能看清哪个测试守着哪处改动；路上顺手发现的问题单独一个 commit。653cb8ee 把 ZCode 登录和 WSL 会话删除混在一起，1e0829b1 把 ja/de 的修复藏在一次 Usage 改动里。10-28 6e080ca04 把 psikent 的 /v1/models tools 标记和 windy 的路由分组 Context 提示这两件事（分别在 gateway 和 GUI 两层）放进同一个 subject，而 subject 只说了第一件。
 
 A checkout, a worktree and the logs in it belong to the session that made
 them. Work in a worktree of your own (`git worktree add --detach`), never

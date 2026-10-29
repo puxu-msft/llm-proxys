@@ -1,157 +1,52 @@
-<!-- reviewed-through: e297a8ab2 (2026-10-13 23:30 +0800) -->
-# Lessons from merged work
+<!-- upstream-reviewed-through: e297a8ab2 (2026-10-13 23:30 +0800) -->
+# 上游已合并工作的经验教训
 
-magpie's code is written, reviewed, merged and released by agents. Each night
-the day's commits are reviewed for what had to be fixed again, what shouldn't
-have merged and what was verified too thinly. What we learned is kept here.
-Read this before changing code. Each lesson is a rule, then why, then the
-evidence. "Seen" counts the days a review found it. A lesson seen on 3 or
-more separate days moves into [docs/code-standards.md](docs/code-standards.md).
+这是上游项目自己的评审日志，作为参考留在这里。上游那边 magpie 的代码由 agent 编写、评审、合并和发布，每晚都会复盘当天提交里哪些又被返工、哪些本不该合并、哪些验证得太薄，学到的东西记在这里。改动代码前先读它。每条教训的写法是：规则、原因、证据；「Seen」是评审发现它的天数，被看到 3 天以上的规则会移进 [docs/code-standards.md](docs/code-standards.md)。
 
-The day of 2026-10-05 had 220 commits and ~170 releases. About 40 of them
-fixed something released earlier the same day or the day before. Most
-fixes didn't need a second try. The ones that did fall into the patterns below.
+本 fork 没有 issue 队列、没有社区 PR 评审、也没有发布流程，所以涉及这些的部分（读别人的报告、合并、打 tag、Latest、发布）在这里不适用。剩下的是工程规则：每条都对着本地改动自查，CI 绿灯的位置由 `make test` 顶上。
 
-On 2026-10-07 four lessons were seen a third day and moved into the code
-standards: a fix reaches every sibling, a change re-derives what is built on
-it, a red test on main is a bug now, and a merge records what was run at
-the reviewed head. They are listed under
-[Moved to the code standards](#moved-to-the-code-standards).
+下面这些是上游那段日子的复盘（那几天里每天 100～600 个 commit、十几个 tag）。留在这里的不是日志本身，而是复盘反复捞出来的模式。本 fork 没有 nightly 复盘、没有 release 和 tag、没有 issue 队列和社区 PR，所以下文引用的版本号、tag、issue 编号和社区贡献者都只是上游当时的事实，留着当证据；要照做的是规则本身，由改动者对照执行，`make test` 就是关口。
 
-2026-10-08 had 192 commits and 18 releases (v0.1.1105 to v0.1.1122), each
-tagged after a green run. Two more lessons were seen a third day and moved:
-real use before building on it, and GUI tests in both engines and every
-language. The acceptance checks now include `gofmt -l` and a Linux and
-Windows `go vet`, since a cross-OS build skips `_test.go`.
+复盘里反复出现的是这几类：
 
-2026-10-09 had 109 commits and 10-10 had 74 up to 13:51 (v0.1.1127 to
-v0.1.1154). Every tag waited for a green run, every release has its 16
-assets, and every commit over 400 lines has a body that says what was run.
-What went wrong was earlier in the work. A privacy exemption was keyed on a
-field's name, which let tool arguments go out unmasked. Two sessions
-committing from one checkout shipped each other's files under the wrong
-subjects. A known DNS-rebinding hole sat documented in a subsystem page
-until the review reproduced it (fixed in c431225a). Three lessons were seen
-a second day.
+- **跑得不够全**：只跑自己改的包，把别的包里守规矩的测试弄红；只跑自己那一页的 GUI 测试，把其他页面弄红。
+- **看到红就当成负载或「main 上也一样」**，然后带着它继续往下做。
+- **修报告里的那一个，而不是那一类**：同一个 bug 的兄弟位置（别的 agent、别的路由、别的 provider）没跟着一起修。
+- **时间**：用固定时长去等状态、用挂钟时间做断言、把日期写死到「明天」。
+- **隔离**：测试里起的进程或 goroutine 没在测试结束时收掉；一个 checkout 或 worktree 被两个 session 共用。
+- **安全**：按字段名而不是按值在协议里的位置做豁免；文档里写明的洞没人跟。
 
-From 10-10 13:51 to 10-11 05:20 there were 191 commits and 18 releases
-(v0.1.1155 to v0.1.1172), each tagged on a green run. Most bodies say what
-was run, what was broken by hand, and what wasn't tried. What went wrong was
-in the tests and in what "the same on main" meant. A test-isolation fix was
-made twice and missed a package each time (#1524). Four commits shipped past
-a red they called load or "the same on main" without filing it, and one of
-those reds was a real rate-limit gap. Two lessons were seen a third day and
-moved into the code standards: whatever a test starts ends when it does, and
-a timing test leaves room on both sides.
+## 从报告到修复
 
-From 10-11 05:20 to 10-14 04:00 there were 602 commits and 56 tags
-(v0.1.1173 to v0.1.1228). Every tag the review checked was on a green run,
-but v0.1.1213 and v0.1.1218 were never published (#1846), and two sessions
-tagged one commit twice. What went wrong was mostly running less than the
-suite: four commits on 10-13 ran chosen packages and turned main red through
-guard tests in packages they didn't touch, and two left GUI files red. Seven
-lessons were seen a third day and moved into the code standards: a failed
-read means unknown, nothing blocks under a lock its reader needs, another
-app's values come from that app, a test named for a guarantee fails without
-it, a test never reaches the network, a tag waits for a green run and is not
-a release, and a large commit has a body with what was run.
+**先照着报告人在他那台机器、那个界面上的具体情况复现出来，再说修好了。** 用他们的 provider、套餐、agent 和布局，和他们用的 GUI / TUI / CLI。核对的是他们想要的结果（能拖动、标题显示出来、原因可读），不是通往结果途中的某一步。
 
-From 10-14 04:16 to 10-15 07:30 there were 275 commits and 16 tags
-(v0.1.1229 to v0.1.1244), each on a green run with its 16 assets. Two
-security holes were reported and fixed where every route passes: a page
-sending `Origin: null` (#2242) and a `*.localhost` page that WebKit
-resolves through DNS (#2256) both spent a subscription without a key. Main
-went red six times from tests that measured time instead of the state
-they were about: five waited a fixed duration, and one pinned a date that
-was tomorrow in UTC. A community layout change was merged and reverted the
-same day (#1354). Three plugin versions were bumped but never reached npm
-(plugins#56).
+- #834 返工了 4 次（v0.1.920 → .925 → .931 → .938），每轮只修了截图里那一个 agent；#792、#743、#791 和 #933 在几小时内被关掉又重开。
+- 4788cf2b 把 gnayiab 的 Cursor 列表报错做进了 GUI；报告人用的是 WSL 里的 TUI，f3c05b5e 才对。
+- 60b910b7 优化的是热启动的 /api/state，而报告说的是冷启动（约 8.5s 的 SyncCatalog）；2a4042a9 才对。
+- 10-13：def3a41e3 在一个报告人（Fallmonkey）已经喊停（「先别做」）的请求上开工，被 2c30e5cee 回退。动手前把整条讨论读到最后一条。
 
-From 10-16 04:00 to 10-17 04:00 there were 73 commits and 16 tags
-(v0.1.1261 to v0.1.1276), each on a green first attempt with its 16
-assets. Most bodies say what was run, what was broken by hand and what
-wasn't tried, and the reds they name have issues. What went wrong was at
-the edges of a run. v0.1.1276 moved every deprecated built-in onto its
-plugin for good, with no real move on record and #2596 asking for one. A
-run of chosen GUI files left i18n-keys red under a tag. A suite run at an
-older base passed while the pushed head failed. Parallel full suites on
-one machine made every run time out until the sessions took turns.
+**fixture 用报告人给的原样字节，不要自己编一个像的。**
 
-From 10-17 04:00 to 10-18 04:00 there were 77 commits and 7 tags
-(v0.1.1277 to v0.1.1283), each on a green run with its 16 assets. The
-retire stack (0f1666b38 to de671719a, about 30k lines out) took all 11
-deprecated built-ins out of magpie, with a dead-code diff and real
-accounts for 8 of them. What went wrong was again at the edges of a run.
-Four bodies recorded a run at a tree other than the one pushed. Reds
-"under load" were filed (27 such issues since 10-16) and then commented
-on with no owner until CI went red on them. A check added to the fallback
-path read every passing reply's whole body, and a 24MB reply waited past
-its client's timeout on CI (7ac20247a). Two lessons were seen a third day
-and moved into the code standards: magpie's default never overrides a
-value the user set, and a checkout belongs to the session that made it.
+- #823：878a8489 用一个自己编的 `<tool_call>{json}`「验证」了 Trae 的情况，而截图里根本没有 JSON；报告人 c353f7bd 又回来了，之后解析器又多支持了两种格式。
+- 3f76105b 的测试用了一个短的 check-in reason，真实的那个被省略号截断了（#821，eb5edced）。
+- 26706c33 用的 skills 目录结构和 #791 的不一样。
+- 给模型输出写解析器时，先收集几段真实的失败回合；截断的和空的 body 也要进测试。
 
-## Reading the report
+**厂商拒绝 magpie、却在自己的客户端上服务同一个账号时，先把失败请求的每个 header 和官方客户端比一遍，再考虑加重试或兜底。**
 
-**Reproduce the reporter's exact case, on the surface they use, before you
-call it fixed.** Use their provider, plan, agent and layout, and their GUI, TUI
-or CLI. Check their goal (it drags, the title shows, the reason is readable),
-not a step on the way to it.
-- #834 came back 4 times (v0.1.920 → .925 → .931 → .938). Each round fixed
-  only the agent in the screenshot. #792, #743, #791 and #933 were closed and
-  reopened within hours.
-- 4788cf2b put gnayiab's Cursor list error in the GUI. The reporter uses the
-  TUI in WSL. Fixed in f3c05b5e.
-- 60b910b7 made a warm /api/state faster. The report was the cold start
-  (~8.5s of SyncCatalog). Fixed in 2a4042a9.
-- 10-13: def3a41e3 built on a request its reporter (Fallmonkey) had put on
-  hold ("先别做"), and was reverted in 2c30e5cee. Read the whole thread,
-  to its last comment, before starting.
-- Seen 2× (2026-10-05, 2026-10-13).
+- Copilot Auto（#256）用了四个版本（719a6820、026158b0、251ef218，最后 4660fd69），每次都多加一层兜底；真正的原因是少了 Copilot-Session-Token 旁边的 X-GitHub-Api-Version。
 
-**Build fixtures from the reporter's literal bytes, not a similar sample you
-made up.**
-- #823: 878a8489 "proved" the Trae case with an invented `<tool_call>{json}`.
-  The screenshot had no JSON. The reporter came back (c353f7bd), and the
-  parser has grown 2 more formats since.
-- 3f76105b's test used a short check-in reason. The real one was ellipsized
-  (#821, eb5edced).
-- 26706c33 used a different skills layout from #791's.
-- For model-output parsers, collect several real failing turns first.
-  Truncated and empty bodies go in the tests.
-- Seen 1× (2026-10-05).
+**把一个账号停用之前，先分清这次拒绝关于账号、模型还是请求内容。**
 
-**When the vendor refuses magpie but serves its own client on the same
-account, diff every header of the failing request against the official
-client's. Do that before adding retries or fallbacks.**
-- #256 Copilot Auto took four releases (719a6820, 026158b0, 251ef218, then
-  4660fd69). Each added another fallback. The cause was a missing
-  X-GitHub-Api-Version beside Copilot-Session-Token.
-- Seen 1× (2026-10-05).
+- 5353ed54 把 WorkBuddy 的「unapproved channel」（其实是 agent 的 system prompt）当成账号故障，把每个 WorkBuddy AI 账号停了 5 天（2033df0f）。
+- 换个账号发同样的请求，看失败方式是否一样。
+- 正面例子（10-07）：bed306ae（#1062）把 Google 对不支持的 thinking level 的 400 和 thinking_config 被拒分开，记下来的是「这个模型拒绝关掉 reasoning」，不是「这个厂商拒绝思考」。
 
-**Decide whether a refusal is about the account, the model or the request
-content before you rest an account.**
-- 5353ed54 counted WorkBuddy's "unapproved channel" (an agent's system
-  prompt) as an account fault. It rested every WorkBuddy AI account for 5
-  days (2033df0f).
-- Test that the same request fails the same way on a second account.
-- Done right on 10-07: bed306ae (#1062) told Google's 400 for an unsupported
-  thinking level apart from thinking_config being turned away. It now
-  remembers that the model refused reasoning off, not that the provider
-  refused thoughts.
-- Seen 1× (2026-10-05).
+**修错误的实质，不只是它的措辞。**
 
-**Fix what the error is about, not only how it is worded.**
-- e63fbb0e (kkgg on Discord, "GLM 直接429了"): Zhipu answered a GLM Coding
-  Plan key sent to its pay-as-you-go endpoint with 429 1113 "余额不足". The
-  commit relabelled the 429 as out of credit, and nothing in magpie tells the
-  user the key belongs on the Coding Plan endpoint, which is what would make
-  their requests work.
-- When a report shows a wrong label, also ask why the request failed. Fix
-  that, or point the user to the fix in the message itself.
-- 10-10: 1134c7a8 reworded the "restart codex" advice. luci hit the same
-  stale app-server daemon on the next release, and e611fc65 then restarted
-  it from magpie.
-- Seen 2× (2026-10-06, 2026-10-10).
+- e63fbb0e（Discord 上的 kkgg，「GLM 直接 429 了」）：智谱对发到按量付费端点的 GLM Coding Plan key 回了 429 1113「余额不足」；这个 commit 只把 429 重新标成余额不足，而 magpie 里没有任何地方告诉用户这个 key 该用在 Coding Plan 端点上，那才是让他们的请求能跑通的事。
+- 报告指出标签不对时，也问一句请求为什么失败：把那个修掉，或者在消息里直接给用户指路。
+- 10-10：1134c7a8 只是改了「重启 codex」这句话的措辞；luci 在下一个版本又撞上同一个卡住的 app-server 守护进程，e611fc65 才让 magpie 去重启它。
 
 ## Fix the class, not the sample
 
@@ -200,7 +95,7 @@ protocol, never by a key's name.**
   a key. Fixed in c431225a.
 - A same-origin exemption needs the Host checked too. A rebound page's GET
   carries no Origin at all.
-- When writing such a sentence, file an issue in the same commit.
+- 写下这种句子时，要么在同一个 commit 里把它修掉，要么明确记下来——本 fork 没有 issue 可开。
 - Seen 1× (2026-10-10).
 
 **An origin exemption judges every Origin a browser can send, not only
@@ -284,12 +179,9 @@ write.**
   a sandbox HOME.
 - Seen 1× (2026-10-11).
 
-**A sibling the body names and leaves alone gets an issue in the same
-commit.**
-- d4a1b9baa (#2634) ended a think block at the first `</think>` no
-  longer, and said "Not changed: the plugins repo's think-tags middleware"
-  with the same rule. Nothing was filed until the review's plugins#176,
-  fixed half an hour later.
+**正文里提到、却没动的兄弟位置，要在同一个 commit 里一起处理或明确记下来。**
+
+- d4a1b9baa（#2634）让 think block 不再在第一个 `</think>` 处结束，同时写了「未改动：plugins 仓库里 think-tags 中间件」用的是同一条规则；直到评审提了 plugins#176 才在半小时后补上。
 - Seen 1× (2026-10-17).
 
 **A fix that holds only for new data says what happens to the old, for
@@ -329,20 +221,11 @@ could match the same key.**
   it once with TZ=UTC and once in a far zone.
 - Seen 1× (2026-10-15).
 
-**Work added to a path every request or poll takes is costed at that
-rate and at its largest input.**
-- 644f4316f's Codex model/effort consumption was read again on every 15s
-  Sessions poll. 019199e0f reads it again only when a call, price or
-  identity changed, before a release.
-- b14784c03 (10-18) put `failure(hw.code(), hw.errBody())` in an if's
-  init in serve, so it ran on every try, a passing one too. A JSON reply
-  is held whole, and `failure` over a 24MB one took 1m45s, so
-  TestPluginStreamLargeReplies' JSON cases waited past their client's
-  timeout on ubuntu and macOS CI. 7ac20247a reads the body only once
-  the try is known to have failed, as every other `failure` call in
-  serve does.
-- Put a body scan after the cheap checks that rule it out, and time it
-  on the largest reply a test has.
+**加在「每个请求或每次轮询都会走」的路径上的工作，要按这个频率和最大的那份输入来算成本。**
+
+- 644f4316f 让 Codex 的模型/思考档位在每 15s 一次的 Sessions 轮询里被重新读取；019199e0f 改成只在调用、价格或身份有变化时才重读。
+- b14784c03（10-18）把 `failure(hw.code(), hw.errBody())` 放进 serve 里 if 的 init，于是每次尝试都会跑，包括成功那次；JSON 回复是整体持有的，对一份 24MB 的回复调用 `failure` 要 1m45s，`TestPluginStreamLargeReplies` 的 JSON 用例因此在 ubuntu 和 macOS CI 上等过了 client 的超时。7ac20247a 改成只在确定这次尝试失败后才读 body，和 serve 里其他 `failure` 调用一致。
+- 把 body 扫描放在能排除它的廉价检查之后，并用测试里最大的那份回复计时。
 - Seen 2× (2026-10-14, 2026-10-18).
 
 **A full run gives the slow packages room.** `go test ./...` at the default
@@ -458,233 +341,48 @@ Two habits from them:
   (a36319d60), and TestCursorEditorCopiedOncePerChange's 100ms linger
   (2efb71ea0).
 
-## Red tests and releases
+## 红测试
 
-**Flaky tests: find the cause.** "A test that fails on main is a bug to fix
-now" is in the code standards. What the reviews found about finding the
-cause:
-- TestPluginSOCKSProxy timed out at 60s on ubuntu CI and was rerun as "load
-  jitter". The cause (9a852ae9d, 10-15): the test freed a port for a dead
-  SOCKS proxy, the netproxy bridge's :0 listen was handed that same port,
-  and the bridge dialled itself under a one-minute read deadline. Found by
-  injecting the reuse (60.03s red, 2.4s green after), not by rerunning. A
-  port a test frees can be handed to anything next: d0ccbbebc fixed the
-  gateway's proxy-down tests for the same reason.
-- TestUnreadLoginsNotWrittenOver needed two writes inside one wall-clock
-  second (a `.bad-<second>` name) and failed on Linux CI (237d216b). Test a
-  name made from time.Now() across a second boundary.
-- Before fixing a red CI run, `git log origin/main` for a commit that names
-  that run or test. 85fd35ab and e34e53a1 fixed the same lost tail in two
-  sessions at once.
-- 10-07: 07e246e5 named 24 GUI failures as "the same on origin/main". Run
-  alone on main, all 8 of their files pass, and so do the two the full run
-  failed (api-key-theme, fold-show-grip). They fail only under the full run,
-  and CI never runs the GUI suite, so nothing shows it. e95852e3 (#948) named
-  TestCursor (Windows) and TestOTelRetryAfterBound the same way. Both pass on
-  macOS main and on CI. Neither is filed.
-- 10-08: 6ab4c16f fixed the run 0f8e4ebc had already fixed. bc7c62dc, #1216,
-  a2a7fb11, 5d0c1dca and #950 each shipped past "fails the same on main".
-- Done right on 10-08: #1184 found the Go 1.26.8 segfault behind its flake,
-  and 30a8ce29 fixed its flake at the cause.
-- 10-11: four commits named a red and shipped past it unfiled. b1396d23
-  reran TestMaxRPM as load; it was a real gap (the vendor counted a late
-  first request in the next request's minute, ce1ecaa4). 2305ab1f's dsh
-  test and 20582866a's queued-stream test "pass alone"; both had causes
-  (9c377231, 3f4287e6). db965824 said panel-usage "fails the same on
-  origin/main 0a11b183", but 0a11b183 was hours old and f823a53d had fixed
-  that test; on the real main it passed 3 of 3.
-  - "The same on main" means on origin/main just fetched: `git fetch`, then
-    name the sha you ran.
-  - A red under load is a timing assumption a user will meet on a busy
-    machine. File it, with its output, in the same commit.
-- 10-11: two sessions again fixed one flake in the same minute (4caae1c8 and
-  3f4287e6), and on 10-10 3a1ade97 landed while another fix of the same
-  test was being written. Checking `git log` isn't enough while both are
-  working; say on an issue, or file one, that you are on it before you
-  start.
-- 10-12/10-13: #1794 got four "seen again" comments before anyone took
-  it (fixed in 6ae6b3402), and #1543 was seen three times with no owner
-  (097479dab). A comment that a red came back is not work on it: take it
-  or say who has it. 31c1e3ab1 named 8 GUI files that "fail the same way
-  on an origin/main 552e974f2 copy" and filed none of them; they were
-  fixed one by one over the next day (searcher-pick, profile-in-use,
-  library-mcp-tools among them).
-- 10-14: reds named in a body and left unfiled again. 56fcd1dc2 shipped
-  past a usage-ledger red that "passes alone". hhh2210's
-  TestPluginSOCKSProxy red on Bun 1.4.3 was filed only by the review
-  (#2207). b476dc5a9's Routing GUI reds on untouched main have #2252 and
-  nothing else. A red gets its own issue, with its output, in the same
-  commit.
-- 10-17: the #1794 pattern on a second day. #2444 had ump45nose's patch
-  for 22 hours while two sessions commented "seen again"; it went red on
-  CI at f191d6423 and was fixed with that patch (50a703190). #2737 got
-  three "Not taking it; recording the numbers" comments before a3b48e0f7
-  fixed it.
-  - One test's subtests were filed three times: #2169, #2711 and #2737
-    are all TestTranslatedStreamKeepsClientAlive. Search the test's name
-    before filing, and file per test.
-  - A red filed "under load" is a CI red soon after: bf931f82c filed
-    #2711 and shipped past it, and its own CI run went red on another
-    subtest of the same test. 27 issues titled "under load" were opened
-    on 10-16 and 10-17. Fix the class (wait on state, room on both sides) instead
-    of filing one a test.
-  - 10-28: the same on a third day. JoeyWu-tech posted a patch for
-    #3568 (TestHandedOverGatewayFinishesItsStream, a real handover drop)
-    on 10-25, with a reproduction and red-on-old tests. Nobody ported it
-    for three days, and it went red on ubuntu CI again at 0a7633136. It
-    was ported unchanged as 11c427eaa. Now in the code standards (a
-    red's issue is read to its last comment, 77898391d).
-- 10-27: the #1794 pattern on a third day. internal/provider has died
-  on main since 10-25 in TestUnreadLoginsWriteErrorsKeepCredentials
-  (#3632, a synctest fatal, 2 of 2 on mote at 4b0a32e0f). The issue has
-  two complete patches (JoeyWu-tech's and skygunner's) and nine
-  comments, no owner. #3919 and #3924 have had JoeyWu-tech's patches
-  since 10-27 15:37 and 16:24, and #3854 has three TestFetch* reds.
-  Every tag since, to v0.1.1780, went out over them, and a provider
-  change can only pass its package with those tests skipped.
-  - A patch on a red issue is reviewed and merged, or answered with
-    why not, the day it is posted.
-  - A red that kills its package hides every new red behind it.
-    6eb510f78 (10-26) made a Codex ask of the models list that three
-    TestFetch* tests counted as a second ask; its provider run died at
-    #3632 first, it then ran `-run Codex`, and the three were filed
-    only later as #3854. With #3632 fixed (4842f69be), #3854 and #3906
-    merged too (759b3b8c4, ed49d1b38), internal/provider passed whole
-    on 10-28 for the first time since 10-25.
-  - A red step hides every step after it. CI's Race step runs only
-    when Test passes, so 9a888323a's allocation bound (#3472), red
-    every time under -race, first showed on 10-28 once Test was green
-    (#3956, fafce6545). A test that bounds bytes runs once under
-    -race before it lands: sync.Pool drops a quarter of what is put in
-    it there, and regexp and zstd take their state from one.
-  - A red assertion hides every assertion after it. #3410 (routing-pause)
-    was filed on 10-23 and failed at its first press, from 91b0be836's
-    motion. On 10-25 c888ef272 saved a rule's hours with a zone, and the
-    fixture's later expectation, without a zone, stayed wrong unseen
-    until 7b007e986 fixed the press on 10-28. #3408 to #3411 sat five
-    days with no owner, and #3104 (usage-ledger) has had none since
-    10-20. A filed red is still a test that checks nothing after its
-    first failure.
-- A cancelled run tests nothing. On 10-14 nine pushes in ten minutes
-  cancelled each other's runs, and 3c4b4dc97 never had a run of its own;
-  its red showed first at 84f14e555.
-  - 10-28: of main's last 58 Test runs, 49 were cancelled by the next
-    push. 0b99b8fbe's new allocation bound went red in macOS's Race job
-    (sync.Pool lets go under -race) at 25df3187b, the first run after it
-    that finished, and sat red until d3f3f3381. A test that bounds
-    allocations or a pool's savings checks `raceOn` (race_on_test.go)
-    and is run once with -race before it is pushed.
-- Done right: 2bd49cc5's race was fixed at its cause in 25 minutes
-  (28049bd2, -race -count=40 -cpu 1,2). 60f87223, b1cba654, 443f1cbc and
-  395c4bc5 fixed flakes at their cause instead of retrying. 06420a71 fixed
-  the macOS first-run check at its cause.
-- Seen 3× (2026-10-05, 2026-10-06, 2026-10-07); the rule itself is in the
-  code standards.
+**flaky 测试要找到成因。**「main 上失败的测试现在就修」是代码规范里的规则。评审在这里的发现：
 
-## Merging and closing
+- TestPluginSOCKSProxy 在 ubuntu CI 上 60s 超时，被当成「负载抖动」重跑。成因（9a852ae9d，10-15）：测试释放了一个已死 SOCKS 代理的端口，netproxy 桥接的 `:0` listen 正好拿到同一个端口，桥接在一分钟读超时下拨号给自己。靠注入这个端口复用找到（注入后 60.03s 红、2.4s 绿），不是靠重跑。测试释放的端口随时可能被别的东西拿到：d0ccbbebc 因为同样原因修了网关的 proxy-down 测试。
+- TestUnreadLoginsNotWrittenOver 需要同一个挂钟秒内两次写入（`.bad-<second>` 名字），在 Linux CI 上失败（237d216b）。用 time.Now() 拼名字的测试要跨秒边界试一次。
+- 修一个红之前先 `git log`，看有没有 commit 提到这个测试：85fd35ab 和 e34e53a1 曾同时修掉同一处丢尾。
+- 「在 main 上也一样」指的是刚 fetch 下来的 origin/main：先 `git fetch`，再说清你跑的是哪个 sha。10-07 07e246e5 把 24 个 GUI 失败称作「origin/main 上一样」，可单独跑它们所在的 8 个文件全都通过——它们只在整套 run 下失败，而 CI 从不跑 GUI 套件，所以没人看得出来。
+- 负载下才红的测试，是用户在忙碌机器上也会遇到的时序假设：连输出一起记录下来，单独一个 commit。
+- 一个红把整个包打死，就会把它之后每一个新红都藏起来。internal/provider 从 10-25 起死在 TestUnreadLoginsWriteErrorsKeepCredentials（#3632，synctest fatal），三个 TestFetch* 红一直躲在它后面，直到 4842f69be 修掉它（759b3b8c4、ed49d1b38），这个包才第一次整套通过。
+- 一个红的步骤会藏住它之后的每一步。CI 的 Race 步骤只在 Test 通过后才跑，所以 9a888323a 的分配上限（#3472，每次 -race 都红）直到 Test 变绿才第一次露出来（fafce6545）。给字节数设上限的测试，落地前先用 -race 跑一次：sync.Pool 在 -race 下会丢掉投进去的四分之一，regexp 和 zstd 也从池里取状态。
+- 一个失败的断言会藏住它之后的每个断言：一个红的测试在被修之前，仍然是一个「第一次失败之后什么都不再检查」的测试。
+- 被取消的 run 什么都没测。10-14 十分钟里九次 push 互相取消，3c4b4dc97 从来没有过属于自己的 run，它的红到 84f14e555 才第一次出现。给分配量或池化收益设上限的测试先查 `raceOn`（race_on_test.go），并在 push 前用 -race 跑一次。
+- 正面例子：2bd49cc5 的 race 在 25 分钟内从成因修掉（28049bd2，-race -count=40 -cpu 1,2）；60f87223、b1cba654、443f1cbc 和 395c4bc5 都是从成因修 flake 而不是重试；06420a71 从成因修了 macOS 首次运行的检查。
 
-**A change no user can undo gets a real run per vendor before its tag.**
-- 9fcf6a6e7, f9ceac162 and 7d7dba31a (10-16) moved every deprecated
-  built-in's accounts onto its plugin, dropped the check that held a move
-  back while a model was in use, and took away the way back. The owner
-  asked for it. The bodies have unit and GUI tests, broken by hand, and a
-  full suite, but no move of a real account and no "Not tried" line.
-  #2596 asked for a sandbox move per subscription, the models a plugin
-  lacks, Factory's min (0.1.31 while npm had 0.1.32) and a rollback
-  story. v0.1.1276 shipped it to every user with none of them answered.
-- "No way back" raises the bar. Move each vendor's real account in a
-  sandbox HOME, list what the user loses, and answer the open issue
-  before the tag.
-- Seen 1× (2026-10-16).
+## 落地一次改动
 
-**Never merge a PR whose own new test fails, or with known problems a
-review listed.** (Merging only the reviewed head, and writing what was run
-before the merge, are in the code standards.)
-- #885 and #826 merged with their own new test failing. #846 merged with
-  four known-wrong translations. Fix or file the problems first.
-- Seen 1× (2026-10-05).
+**用户无法撤销的改动，落地前要按厂商真跑一遍。**
 
-**An issue that names two problems is closed when both are fixed.**
-- #2449's title named a lost tail and plugin hosts outliving their
-  test's HOME. 6641e1b0a fixed the first and it was closed on 10-15. The
-  second came back on macOS CI at 84cd686af on 10-17 with no owner
-  (#2702).
-- Seen 1× (2026-10-17).
+- 9fcf6a6e7、f9ceac162 和 7d7dba31a（10-16）把所有废弃内置订阅的账号一次性搬到各自的 plugin 上，去掉了「有模型在用就先别搬」的检查，也拿掉了回头路。owner 要求这么做，正文里有单元测试和 GUI 测试、手动破坏、整套跑通，但没有一次真实账号的搬迁，也没有「未尝试」的说明。#2596 要的是每个订阅在沙箱里搬一次、列出 plugin 缺哪些模型、Factory 的 min（npm 上已有 0.1.32 而 min 停在 0.1.31）和回退方案；v0.1.1276 一个都没回答就发给了所有用户。
+- 「没有回头路」会把门槛抬高：在沙箱 HOME 里搬一次真实账号，列出用户会失去什么，把未决的问题回答掉，再落地。
 
-**A size budget raised whenever a change reaches it bounds nothing.**
-- app.js's budget was raised four times in 2.5 days, the last to
-  1,269,000 by 85eef5d87, while app.js grew 53KB and nothing moved out
-  (#2710). 17557132c met the same budget without a raise.
-- A raise moves something out first, or follows a growth rate the owner
-  set.
-- Seen 1× (2026-10-17).
+**自己新加的测试失败，或者评审列出的已知问题还在，就先别落地。**
 
-**A release published after a newer one takes Latest, and with it the
-update feed and the tap, unless the publish step checks.**
-- 10-15: v0.1.1255 was published 25 minutes after v0.1.1256, and
-  GitHub marked the older one Latest (moved back by hand then).
-- 10-28: v0.1.1891 finished 16s after v0.1.1892. 1891 became Latest,
-  which usemagpie.ai's /api/latest serves, and the Homebrew tap went from
-  1892 back to 1891 (tap 1d47b64). v0.1.1890, still notarising, would
-  have done it again. magpie-releases ee73d7a now passes `make_latest`
-  only to the highest version and runs the tap update only then.
-- A fix made by hand once is a fix for that release only. When it comes
-  back, fix the step that does it.
-- Seen 2× (2026-10-15, 2026-10-28).
+- #885 和 #826 在自带的新测试失败的情况下被合并；#846 带着四处已知错误的翻译被合并。先修掉，或者明确记下来。
 
-**A publish run that stays red for one known package hides every new
-failure behind it.**
-- think-tags 0.1.1 can't publish (E404, publish.yml isn't its trusted
-  publisher, plugins#180), so every plugins publish run since b3a860c is
-  red, and a new package's failure would look the same.
-- Check each package with `npm view --prefer-online`, not the run's
-  colour, until the known red is fixed.
-- Seen 1× (2026-10-17).
+**上限只要一碰到就被抬高，就等于没有上限。**
 
-**Keep the issue open until the reporter's case works. Reopen when they say
-it doesn't.**
-- On #876 the reporter couldn't reopen it themselves and had to file #888.
-- Don't close as not-planned what the owner hasn't ruled on. #769 and #871
-  were reversed.
-- Done right on 10-07: #1050, #1053, #1063 and #958 shipped a fix and stayed
-  open for the reporter.
-- Seen 1× (2026-10-05).
+- app.js 的预算在 2.5 天里被抬了四次，最后一次由 85eef5d87 抬到 1,269,000，期间 app.js 长了 53KB 而什么都没搬出去（#2710）；17557132c 没抬预算也满足了同一个上限。
+- 要抬就先搬点东西出去，或者按 owner 定的增长速率来。
 
-**One commit, one goal** is in the code standards since 10-28. See
-[Moved to the code standards](#moved-to-the-code-standards).
+**一个 commit 只做一件事** 自 10-28 起在代码规范里，见 [Moved to the code standards](#moved-to-the-code-standards)。
 
-**A squash merge's message is written, not GitHub's default.** Give
-`gh pr merge --squash` a `--subject` and a `--body-file` holding the PR's
-own change and what was run at the reviewed head.
-- 708ae4144 (#852) and 81b7016e6 (#1028) each carry a ~520KB body. Their
-  branches had main merged in (100 commits on #1028), and the default
-  squash message lists every commit's message. #1028's own run record
-  isn't in git at all: the body after its subject is other commits.
-- Before pushing, check that `git log -1 --format=%B | wc -c` is a few KB at
-  most.
-- 10-14: b6e82c6c5 put a paragraph in the subject line. The subject is one
-  short line; the rest goes in the body.
-- Seen 2× (2026-10-13, 2026-10-14).
+**提交信息是写出来的，不是默认生成的。**
 
-**A community PR that changes how a page looks is not merged on review
-alone.**
-- #1354 (Nxir) rearranged the Routing page with no issue asking for it. It
-  passed review and shipped, users rejected it the same day ("v0.1.1231
-  没有这个问题"), and bfef5d51b reverted it whole. The fault was the merge,
-  not the author.
-- A layout change needs an issue or the owner asking for it. The default is
-  no.
-- Seen 1× (2026-10-14).
+- 708ae4144（#852）和 81b7016e6（#1028）各自背了约 520KB 的正文：它们的分支把 main 合了进来（#1028 上有 100 个 commit），而 squash 的默认信息会把每个 commit 的信息都列进去，#1028 自己的运行记录在 git 里根本没有。
+- push 之前检查 `git log -1 --format=%B | wc -c` 最多几 KB：subject 是一行短句，其余放正文（10-14 b6e82c6c5 把一整段塞进了 subject）。
 
-**Two sessions never commit from the same checkout** is in the code
-standards since 10-18, widened to a worktree and its logs. See
-[Moved to the code standards](#moved-to-the-code-standards).
+**两个 session 永远不要在同一个 checkout 里提交** 自 10-18 起在代码规范里，范围已扩到一个 worktree 和它的日志，见 [Moved to the code standards](#moved-to-the-code-standards)。
 
 ## Moved to the code standards
 
-- **A red's issue is read to its last comment, and a patch on it is
-  taken first** (10-12, 10-17, 10-27, 10-28). On 10-28 JoeyWu-tech's
-  #3568 patch sat three days until CI went red on it again (11c427eaa).
 - **A mover's min is npm's version when the change lands** (10-16,
   10-18, 10-24). On 10-16 19e9fc47f raised Cursor's min a version behind
   npm, and 53009f81a left Factory one behind (#2557). On 10-18 zed 0.1.9
@@ -693,9 +391,7 @@ standards since 10-18, widened to a worktree and its logs. See
   was published and the min stayed 0.1.37 for four days, until
   490c0a4ad. The rule now also says a plugin version raises the min the
   same day.
-These were seen on three or more days. The rules and their evidence are in
-[docs/code-standards.md](docs/code-standards.md); a review still checks
-each one.
+这些规则被看到三天以上才移出去；规则本身和证据在 [docs/code-standards.md](docs/code-standards.md)。在 fork 里由改动者自查时逐条对照。
 
 - **One commit, one goal** (10-05, 10-06, 10-28). On 10-28 6e080ca04
   answered psikent (/v1/models says every model takes tools) and windy
@@ -720,8 +416,7 @@ each one.
 - **A test that fails on main is a bug to fix now** (10-05, 10-06, 10-07).
   On 10-07 dcbae2ef, 76d82528, b2345078, 07e246e5 and e95852e3 each shipped
   past "fails the same on origin/main".
-- **Merge only the reviewed head, and write what was run before the merge**
-  (10-05, 10-06, 10-07). On 10-07 #1037 merged with no record.
+- **落地前把「跑了什么」写下来**（10-05、10-06、10-07）。10-07 的 #1037 就是没有记录地进去的。
 - **Real use before building on it, or telling users it works** (10-05,
   10-07, 10-08). Acceptance criterion 5. On 10-08 bbf99143 "not tried on
   Linux" broke Linux vet with the WSL2 distro there, and #1185 was reviewed
@@ -771,13 +466,8 @@ each one.
 - **A test never reaches the network** (10-08, 10-11, 10-13). TestPiPackage
   tested npm's latest pi (f230fa23b); tests waited 30s on models.dev
   (bde11c778).
-- **A tag waits for a green run, and a tag is not a release** (10-05,
-  10-08, 10-12, 10-13). v0.1.1192/1193 tagged one commit; v0.1.1213 and
-  v0.1.1218 never published (#1846). `npm view --prefer-online` a plugin
-  version before naming it.
-- **A large commit has a body with what was run** (10-08, 10-12, 10-13).
-  ea3d480ed and 1cd814004 (community, no record); 3ccbe6bc1's "push notes"
-  hid two red GUI tests (2dcc51417, ba0712888).
+- **把插件版本写进 mover 的 `min`、或写进给用户的回复之前，先 `npm view --prefer-online` 确认它真的发布了**（10-05、10-08、10-12、10-13）。上游曾有抢发的 v0.1.1213 和 v0.1.1218 始终没发布出去（#1846）。
+- **大 commit 的正文要写清跑了什么**（10-08、10-12、10-13）。ea3d480ed 和 1cd814004（社区提交）没有记录；3ccbe6bc1 把结果塞进「push notes」，藏住了两个红的 GUI 测试（2dcc51417、ba0712888）。
 - **10-11 to 10-13, criteria still missed.**
   - The suite: 6fa3109ea, 43d8a5633, 5617281f5 and cdb7b5ff7 ran chosen
     packages and broke guard tests elsewhere (494609866, 24146c031,
@@ -794,21 +484,13 @@ each one.
 - **10-14, criteria still missed.**
   - A large commit has a body with what was run: 509328ccb and c1e354245
     pointed to "the push" for it. A pointer is not a record.
-  - A tag is not a release: zed 0.1.7 and zen-free 0.1.2 to 0.1.4 were
-    bumped and never reached npm (plugins#56). Done right: every mover min
-    raised on 10-14 (0337ce4bc, 50929661f, bd4cb7a26, 2c18c697c,
-    aae49d086) named a version npm had.
+  - 抬了版本不等于发布出去：zed 0.1.7 和 zen-free 0.1.2 到 0.1.4 都抬了版本却始终没到 npm（plugins#56）。正面例子：10-14 每个 mover 的 min（0337ce4bc、50929661f、bd4cb7a26、2c18c697c、aae49d086）写的都是 npm 上真有的版本。
 - **10-15, criteria still missed.**
   - A large commit has a body with what was run: 113 of the 120 commits
     pushed at 23:08 (728cb2d29 to a7a012202) end "Full suite:
     SUITE_LINE", a placeholder no one filled in. The batch's real record
     is in 386d341e7 alone. Before pushing, grep the bodies for a
     template's placeholder.
-  - A tag is not a release, and a release is not Latest: v0.1.1255
-    (a1f7b8c13) was published 25 minutes after v0.1.1256 (37fec1240), so
-    GitHub marked the older one Latest and the site's downloads served
-    it until the review moved the mark. Publish in tag order, or pass
-    `--latest` to the newest.
   - A rerun's green hides the first try: a1f7b8c13's run is green on
     attempt 2, its attempt 1 red (#2390, fixed at its cause in
     4a6bf80f4). Read `attempt` before calling a run green.
@@ -892,7 +574,4 @@ each one.
     delay and fixed their cause.
   - 7f62dbf3 named the siblings the reporter's patch missed (Cursor, Muse,
     GUI, CLI) and covered them.
-  - 9b51428e found the same hold-out in Factory's list.
-  - #1454 stayed open until the reporter confirmed.
-  - #1213 and #1282 merged at the reviewed head with the record seconds
-    before.
+  - 9b51428e 在 Factory 的列表里找到了同一个漏掉的项。

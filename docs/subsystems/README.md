@@ -23,19 +23,19 @@ A subsystem can span several packages or repositories. Its reference describes t
 
 ## Maintain a reference
 
-Update the owning reference in the same PR when a change alters a documented responsibility, interface, state transition, runtime path, compatibility rule, or failure behavior. An internal refactor that preserves these contracts does not require a prose change.
+改动如果改变了已记录的责任、接口、状态转换、运行路径、兼容规则或失败行为，就在同一次改动里更新对应的参考页；不改变这些契约的内部重构，不需要改文字。
 
 Keep each fact in one reference and link to it from agent instructions or other pages. Link to source files and named symbols rather than copying implementation details that change frequently. Explain field meanings and constraints that signatures alone do not express.
 
-For a new reference, include the responsibilities and boundaries, source of truth, main runtime paths, state transitions, important constraints, and existing verification commands. Include failure and compatibility behavior where relevant. Document current behavior separately from proposed changes; the proposal belongs in its issue or PR.
+新增参考页时，写清责任与边界、真相来源、主要运行路径、状态转换、重要约束和现有的验证命令，相关处写明失败与兼容行为。「当前行为」和「拟议改动」要分开写：提案放在自己的 commit 里，不要写进参考页。
 
-## Describe a PR's semantic changes
+## 说明改动的语义影响
 
-For each affected subsystem, explain the observable change with its trigger and before/after behavior. Include changes to interfaces, state, compatibility, and failure behavior when relevant. Link the affected reference, implementation, and verification evidence. State when a refactor preserves the documented behavior.
+对每个受影响的子系统，说明可观察的变化、它的触发条件，以及改动前后的行为差异；涉及接口、状态、兼容和失败行为时一并写出。链接到对应的参考页、实现和验证证据；重构保持既有行为时也要说明。
 
-For example, a change to plugin adoption should explain which migration state and account condition trigger it, which implementation handles requests before and after adoption, and which test exercises that transition.
+例如改 plugin 的 adoption 时，要说清它由哪种迁移状态和账号条件触发、改动前后分别由哪段实现处理请求、哪个测试覆盖这个转换。
 
-This is an author-provided explanation that a reviewer verifies against the diff and surrounding code. It is not an automatically proven compatibility verdict.
+这是改动者自己的说明，要对着 diff 和周边代码核对；它不是自动证明的兼容性结论。
 
 ## Review a change
 

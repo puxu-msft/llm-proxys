@@ -1,0 +1,28 @@
+# EditorConfig — https://editorconfig.org
+#
+# 本仓库的书写规则。这里最重要的是 `max_line_length = off`：不要按 80/120 列硬折行。一句话、一段话、一个列表项就是一行，断行只断在语义边界（逗号、句号），其余交给编辑器软折行。
+#
+# 另外，本 fork 新增或改动的注释、文档一律写中文（见 AGENTS.md 的「本 fork 自己的书写规则」）；未改动的原有英文内容保持不动。
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = off
+
+[*.md]
+# Markdown 里行尾两个空格是硬换行，是有含义的，不能删。
+trim_trailing_whitespace = false
+
+[*.go]
+# Go 用 tab，gofmt 会检查；不要让编辑器按上面的 2 空格缩进。
+indent_style = tab
+
+[Makefile]
+# make 只认 tab 缩进。
+indent_style = tab

@@ -1,26 +1,35 @@
 # Notes for coding agents
 
+## 仓库与分支约定 — 先读这一段
+
+这个 checkout 是 `yetone/magpie` 的**个人私有 fork**：这里的改动只供自己使用，**不回馈上游**。
+
+- 在 **`magpie/main`** 上开发，功能分支从它切出、命名 `magpie/<topic>`；它推送到 `puxu-msft/llm-proxys`。上游的 `main` 只用来镜像 `yetone/magpie`，不要把个人改动放上去。
+- `origin` = `puxu-msft/llm-proxys`，是**唯一**的推送目标。
+- `up` = `yetone/magpie`，**只读上游、仅作参考**（push URL 为 `DISABLED`）。不往 `up` 推，也不向上游开 PR 或 issue；同步用 `git fetch up && git merge up/main`。
+- 与上游分叉是预期之内的，不要为了「和上游对齐」把本地行为改回去，除非明确要求。
+- 省掉一切上游协作流程：没有社区 PR 评审、署名或黑名单规则，没有 release / changelog 义务，不打版本 tag，不发布到 `yetone/magpie-releases`。本 fork 已移除发布类 workflow（release、docker、ui-preview、privacy-filter）；自更新和 Privacy 的 `pf-serve` 仍从上游 release 安装。
+- 仍然有效的是「怎么改代码」这部分：[代码规范](docs/code-standards.md)、[子系统设计参考](docs/subsystems/README.md) 和下面的 [经验教训](LESSONS.md)。这里没有评审环节，`make test`、`make test-ui` 和代码规范里的验收标准就是关口。
+
+## 本 fork 自己的书写规则
+
+- **改动的行一律写中文**：新增或修改的注释、文档、说明都写中文，不写英文；未改动的原有英文内容保持不动。
+- **不要硬折行**：`.editorconfig` 设了 `max_line_length = off`。一句话、一段话、一个列表项就是一行，其余交给编辑器软折行；不要在 80/120 列处断行，非要断就断在语义边界（逗号、句号）。
+- 提交信息用 Conventional Commits 风格并写中文说明（`gateway: ……`），正文写清跑了什么、在哪个 tree 上跑的。
+
 ## Subsystem design and review
 
 Before changing a documented subsystem, read its
 [design reference](docs/subsystems/README.md) and verify the linked source.
-When preparing or reviewing a PR, follow the same page's documentation update,
-semantic change description, and review rules.
+准备改动时，按同一页的规则同时更新文档、说明语义变化并做自查。
 
 ## Code standards
 
 Write and review changes against the [code standards](docs/code-standards.md).
 
-## Community PRs
-
-Before reviewing a community PR, read [contributors](docs/contributors.md):
-what stops a review for possible harm, what is closed unreviewed, and the
-authors whose PRs are closed on sight.
-
 ## Lessons
 
-Before changing code, read [LESSONS.md](LESSONS.md): what recent merged
-work got wrong and the rule that would have caught it.
+改动代码前先读 [LESSONS.md](LESSONS.md)：上游近期合并的工作里出过什么错，以及能拦住它的规则。
 
 ## Built-in subscriptions that a plugin serves
 
