@@ -8,6 +8,7 @@ import Button from "@/shared/components/Button";
 import Badge from "@/shared/components/Badge";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import Select from "@/shared/components/Select";
+import ProviderConnectionFields from "@/shared/components/ProviderConnectionFields";
 
 export default function EditConnectionModal({ isOpen, connection, proxyPools, onSave, onClose }) {
   const [formData, setFormData] = useState({
@@ -32,6 +33,8 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
     wamCaFile: "",
   });
   const [region, setRegion] = useState("");
+  // 连接级可调项（base url、报文格式）：registry connectionFields 声明。
+  const [connectionValues, setConnectionValues] = useState({});
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [validating, setValidating] = useState(false);
@@ -85,6 +88,13 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
         const savedRegion = connection.providerSpecificData?.region || providerCfg.defaultRegion || providerCfg.regions[0]?.id || "";
         setRegion(savedRegion);
       }
+      // Load the per-connection knobs (base url, wire format) the registry declares.
+      const fields = providerCfg?.connectionFields || [];
+      const initial = {};
+      for (const field of fields) {
+        initial[field.id] = connection.providerSpecificData?.[field.id] ?? field.defaultValue ?? "";
+      }
+      setConnectionValues(initial);
       setTestResult(null);
       setValidationResult(null);
     }
@@ -101,6 +111,18 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
     ? (isOpenAICompatibleProvider(connection.provider) || isAnthropicCompatibleProvider(connection.provider))
     : false;
   const providerRegions = connection ? (AI_PROVIDERS?.[connection.provider]?.regions || null) : null;
+  const connectionFields = connection ? (AI_PROVIDERS?.[connection.provider]?.connectionFields || null) : null;
+
+  // Persist the per-connection knobs; a cleared field is removed.
+  const buildConnectionSpecificData = () => {
+    const data = { ...(connection?.providerSpecificData || {}) };
+    for (const field of connectionFields || []) {
+      const value = connectionValues[field.id];
+      if (typeof value === "string" && value.trim()) data[field.id] = value.trim();
+      else delete data[field.id];
+    }
+    return data;
+  };
 
   // Build providerSpecificData for region-aware providers
   const buildRegionSpecificData = () => {
@@ -160,6 +182,7 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
           ...(usesAwsCredentialForm ? { providerSpecificData: buildAwsSpecificData() } : {}),
           ...(usesWamCredentialForm ? { providerSpecificData: buildWamSpecificData() } : {}),
           ...(providerRegions ? { providerSpecificData: buildRegionSpecificData() } : {}),
+          ...(connectionFields?.length ? { providerSpecificData: buildConnectionSpecificData() } : {}),
         }),
       });
       const data = await res.json();
@@ -197,6 +220,7 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
                 ...(usesAwsCredentialForm ? { providerSpecificData: buildAwsSpecificData() } : {}),
           ...(usesWamCredentialForm ? { providerSpecificData: buildWamSpecificData() } : {}),
                 ...(providerRegions ? { providerSpecificData: buildRegionSpecificData() } : {}),
+                ...(connectionFields?.length ? { providerSpecificData: buildConnectionSpecificData() } : {}),
               }),
             });
             const data = await res.json();
@@ -236,6 +260,10 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
       // Persist updated region for region-aware providers
       if (providerRegions && region) {
         updates.providerSpecificData = buildRegionSpecificData();
+      }
+      // Persist the per-connection knobs; a cleared field is removed.
+      if (connectionFields?.length) {
+        updates.providerSpecificData = buildConnectionSpecificData();
       }
       
       await onSave(updates);
@@ -426,6 +454,12 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
             options={providerRegions.map((r) => ({ value: r.id, label: r.label }))}
           />
         )}
+
+        <ProviderConnectionFields
+          fields={connectionFields}
+          values={connectionValues}
+          onChange={(id, value) => setConnectionValues((prev) => ({ ...prev, [id]: value }))}
+        />
 
         {!isCompatible && !isAzure && !isCloudflareAi && (
           <div className="flex items-center gap-3">

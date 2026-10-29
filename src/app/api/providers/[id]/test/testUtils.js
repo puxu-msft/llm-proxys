@@ -6,6 +6,7 @@ import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { probeBedrockCredentials } from "open-sse/executors/bedrock.js";
 import { probeWamCredentials } from "open-sse/shared/wamToken.js";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
+import { resolveProbeTransport } from "open-sse/services/transportOverride.js";
 import { CODEX_CLI_VERSION } from "open-sse/config/appConstants.js";
 import { GROK_CLI_PAGER_USER_AGENT, GROK_CLI_VERSION } from "open-sse/config/grokCli.js";
 import {
@@ -710,11 +711,17 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
       }
       case "minimax":
       case "minimax-cn": {
-        const endpoints = { minimax: "https://api.minimax.io/anthropic/v1/messages", "minimax-cn": "https://api.minimaxi.com/anthropic/v1/messages" };
-        const res = await fetchWithConnectionProxy(endpoints[connection.provider], {
+        // 连接级 base url / 报文格式优先（registry connectionFields）。
+        const probe = resolveProbeTransport(connection.provider, connection.providerSpecificData);
+        const baseUrl = probe?.baseUrl || PROVIDERS[connection.provider]?.baseUrl;
+        const url = probe?.urlSuffix ? `${baseUrl}${probe.urlSuffix}` : baseUrl;
+        const isOpenAiFormat = probe?.format === "openai";
+        const res = await fetchWithConnectionProxy(url, {
           method: "POST",
-          headers: { "x-api-key": connection.apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({ model: "minimax-m2", max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
+          headers: isOpenAiFormat
+            ? { "Authorization": `Bearer ${connection.apiKey}`, "content-type": "application/json" }
+            : { "x-api-key": connection.apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json", ...(probe?.headers || {}) },
+          body: JSON.stringify({ model: getDefaultModel(connection.provider) || "MiniMax-M3.1-Flash", max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
         }, effectiveProxy);
         const valid = res.status !== 401 && res.status !== 403;
         return { valid, error: valid ? null : "Invalid API key" };

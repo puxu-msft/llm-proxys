@@ -22,6 +22,8 @@
 // {ok, data} with data.access_token on success and data.error =
 // authorization_pending|slow_down while waiting.
 
+import { MINIMAX_SITES } from "open-sse/providers/minimax/constants.js";
+
 const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
 const SIGN_IN_MS = 10 * 60 * 1000;
 
@@ -144,6 +146,6 @@ export function createMinimaxCodeProvider(site) {
 // Site table shared with the registry docs — the llm/agent hosts live in the
 // registry transport; only the OAuth hosts matter here.
 export const MINIMAX_CODE_SITES = {
-  cn: { account: "https://account.minimax.cn" },
-  global: { account: "https://account.minimax.io" },
+  cn: { account: MINIMAX_SITES.cn.accountRoot },
+  global: { account: MINIMAX_SITES.global.accountRoot },
 };

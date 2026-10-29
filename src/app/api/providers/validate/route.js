@@ -3,6 +3,7 @@ import { getProviderNodeById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { resolveOllamaLocalHost, resolveXiaomiTokenplanBaseUrl, PROVIDERS } from "open-sse/config/providers.js";
+import { resolveProbeTransport } from "open-sse/services/transportOverride.js";
 import { openaiToCommandCodeRequest } from "open-sse/translator/request/openai-to-commandcode.js";
 import { resolveQoderCredentials, resolveQoderModels } from "open-sse/services/qoderModels.js";
 import { probeBedrockCredentials } from "open-sse/executors/bedrock.js";
@@ -336,8 +337,6 @@ export async function POST(request) {
         case "glm":
         case "glm-cn":
         case "kimi":
-        case "minimax":
-        case "minimax-cn":
         case "alicode-intl":
         case "alims-intl":
         case "alicode":
@@ -369,6 +368,25 @@ export async function POST(request) {
             // 400 = model resolution error but auth passed (e.g. agentrouter "no available channel")
             isValid = res.status !== 401 && res.status !== 403;
           }
+          break;
+        }
+        case "minimax":
+        case "minimax-cn": {
+          // 连接级 base url / 报文格式优先（registry connectionFields）。
+          const probe = resolveProbeTransport(provider, body.providerSpecificData);
+          const baseUrl = probe?.baseUrl || PROVIDERS[provider]?.baseUrl;
+          const url = probe?.urlSuffix ? `${baseUrl}${probe.urlSuffix}` : baseUrl;
+          const testModel = getDefaultModel(provider) || "MiniMax-M3.1-Flash";
+          const isOpenAiFormat = probe?.format === "openai";
+          const res = await fetch(url, {
+            method: "POST",
+            headers: isOpenAiFormat
+              ? { "Authorization": `Bearer ${apiKey}`, "content-type": "application/json" }
+              : { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json", ...(probe?.headers || {}) },
+            body: JSON.stringify({ model: testModel, max_tokens: 1, messages: [{ role: "user", content: "test" }] }),
+          });
+          // 400 = 模型名/参数问题，鉴权已过。
+          isValid = res.status !== 401 && res.status !== 403;
           break;
         }
         case "volcengine-ark":

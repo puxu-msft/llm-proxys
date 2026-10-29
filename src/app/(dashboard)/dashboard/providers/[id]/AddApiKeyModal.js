@@ -3,10 +3,18 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button, Badge, Input, Modal, Select } from "@/shared/components";
+import ProviderConnectionFields from "@/shared/components/ProviderConnectionFields";
 import { AI_PROVIDERS } from "@/shared/constants/providers";
 import { planBulkAdd } from "@/shared/utils/bulkAdd";
 
 const BULK_PLACEHOLDER = `name1|sk-key1\nname2|sk-key2\nsk-key-only-auto-named`;
+
+// 连接级可调项的初始值（registry connectionFields 声明）。
+function initialConnectionValues(fields) {
+  const values = {};
+  for (const field of fields || []) values[field.id] = field.defaultValue ?? "";
+  return values;
+}
 
 export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, authType, authHint, website, proxyPools, error, existingNames, onSave, onBulkDone, onClose }) {
   const NONE_PROXY_POOL_VALUE = "__none__";
@@ -33,6 +41,15 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   const apiKeyOptionalWith = AI_PROVIDERS?.[provider]?.apiKeyOptionalWith || null;
   const providerRegions = AI_PROVIDERS?.[provider]?.regions || null;
   const defaultRegion = AI_PROVIDERS?.[provider]?.defaultRegion || providerRegions?.[0]?.id || "";
+  // 连接级可调项（base url、报文格式）：registry connectionFields 声明。
+  const connectionFields = AI_PROVIDERS?.[provider]?.connectionFields || null;
+  const [connectionValues, setConnectionValues] = useState(() => initialConnectionValues(connectionFields));
+  // 换 provider 时重置这些可选项（渲染期调整 state，而不是 effect 里 setState）。
+  const [connectionProvider, setConnectionProvider] = useState(provider);
+  if (connectionProvider !== provider) {
+    setConnectionProvider(provider);
+    setConnectionValues(initialConnectionValues(connectionFields));
+  }
 
   const [formData, setFormData] = useState({
     name: "",
@@ -115,6 +132,12 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
     if (providerRegions && region) {
       return { region };
     }
+    // 连接级可调项：只存填了值的字段，空值不落库。
+    const connectionData = {};
+    for (const [key, value] of Object.entries(connectionValues)) {
+      if (typeof value === "string" && value.trim()) connectionData[key] = value.trim();
+    }
+    if (Object.keys(connectionData).length) return connectionData;
     return undefined;
   };
 
@@ -352,6 +375,11 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             options={providerRegions.map((r) => ({ value: r.id, label: r.label }))}
           />
         )}
+        <ProviderConnectionFields
+          fields={connectionFields}
+          values={connectionValues}
+          onChange={(id, value) => setConnectionValues((prev) => ({ ...prev, [id]: value }))}
+        />
         {isCompatible && (
           <Input
             label="Default Model"

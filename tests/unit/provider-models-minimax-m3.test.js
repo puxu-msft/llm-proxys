@@ -40,13 +40,30 @@ describe("MiniMax-M3 model registration", () => {
     expect(cnModels.some((m) => m.id === "MiniMax-M3")).toBe(true);
   });
 
-  it("does not regress the existing M2.7 / M2.5 / M2.1 entries", () => {
+  it("lists the current language models (M3.1-Flash + M3) on both providers", () => {
+    const intlIds = (PROVIDER_MODELS.minimax || []).map((m) => m.id);
+    const cnIds = (PROVIDER_MODELS["minimax-cn"] || []).map((m) => m.id);
+
+    for (const id of ["MiniMax-M3.1-Flash", "MiniMax-M3"]) {
+      expect(intlIds).toContain(id);
+      expect(cnIds).toContain(id);
+    }
+  });
+
+  it("keeps the retired Preview id resolvable as an alias of M3.1-Flash", () => {
+    const intl = (PROVIDER_MODELS.minimax || []).find((m) => m.id === "MiniMax-M3.1-Flash-Preview");
+    const cn = (PROVIDER_MODELS["minimax-cn"] || []).find((m) => m.id === "MiniMax-M3.1-Flash-Preview");
+    expect(intl?.upstreamModelId).toBe("MiniMax-M3.1-Flash");
+    expect(cn?.upstreamModelId).toBe("MiniMax-M3.1-Flash");
+  });
+
+  it("no longer lists the legacy M2.x line", () => {
     const intlIds = (PROVIDER_MODELS.minimax || []).map((m) => m.id);
     const cnIds = (PROVIDER_MODELS["minimax-cn"] || []).map((m) => m.id);
 
     for (const id of ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1"]) {
-      expect(intlIds).toContain(id);
-      expect(cnIds).toContain(id);
+      expect(intlIds).not.toContain(id);
+      expect(cnIds).not.toContain(id);
     }
   });
 });

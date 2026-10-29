@@ -1,4 +1,5 @@
 import { detectFormat, getTargetFormat, resolveTransport } from "../services/provider.js";
+import { resolveOverrideTransport } from "../services/transportOverride.js";
 import { translateRequest } from "../translator/index.js";
 import { applyThinking, extractThinking, stripThinkingSuffix } from "../translator/concerns/thinkingUnified.js";
 import { FORMATS } from "../translator/formats.js";
@@ -100,9 +101,14 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   // translated to the Responses body (`input`) yet POSTed to the default Chat
   // Completions URL, and upstream rejects it: "unknown parameter `input`".
   const modelTargetTransport = modelTargetFormat ? resolveTransport(provider, modelTargetFormat) : null;
-  const useTransport = (!modelSupportedFormats || modelSupportedFormats.includes(sourceFormat))
-    ? runtimeTransport
-    : modelTargetTransport;
+  // 连接级覆盖（registry connectionFields）：base url 与报文格式可按连接改。
+  // 覆盖优先于「按客户端格式选端点」，锁定格式后请求会被翻译成该格式再发。
+  const overrideTransport = resolveOverrideTransport(provider, sourceFormat, credentials);
+  const useTransport = overrideTransport
+    ? (modelSupportedFormats && !modelSupportedFormats.includes(overrideTransport.format) ? modelTargetTransport : overrideTransport)
+    : ((!modelSupportedFormats || modelSupportedFormats.includes(sourceFormat))
+      ? runtimeTransport
+      : modelTargetTransport);
   // A source-format-matched endpoint keeps the request lossless. Prefer it
   // over a model-level targetFormat, which is only the fallback for clients
   // whose wire format has no supported transport (for example MiniMax-M3:

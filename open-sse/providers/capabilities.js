@@ -56,11 +56,12 @@ export const DEFAULT_CAPABILITIES = {
   tools: true,          // function / tool calling
   reasoning: false,     // thinking / reasoning
   // thinking wire format (only meaningful when reasoning:true). null → derive from transport.format.
-  // enum: openai|claude-adaptive|claude-budget|gemini-level|gemini-budget|zai|qwen|deepseek|kimi|minimax|hunyuan|step|nous
+  // enum: openai|claude-adaptive|claude-budget|gemini-level|gemini-budget|zai|qwen|deepseek|kimi|minimax|minimax-effort|hunyuan|step|nous
   thinkingFormat: null,
   thinkingCanDisable: true,  // false → model cannot turn thinking off (clamp to min instead of disable)
   thinkingRange: null,       // { min, max } for budget formats; null = no clamp
   thinkingEffortSupported: false, // zai format only: model accepts a reasoning_effort level (GLM-5.2+; older GLM ignores it)
+  supportsOutputConfig: false, // Claude 接口收 output_config.effort（MiniMax M3.1-Flash 收，M3 不收）
   // limits (tokens)
   contextWindow: 200000,
   maxOutput: 64000,
@@ -389,12 +390,20 @@ export const PROVIDER_CAPABILITIES = {
   "ollama": {
     "deepseek-v4.1-flash:cloud": { vision: true, reasoning: true, thinkingFormat: "deepseek", contextWindow: 1000000, maxOutput: 384000 },
   },
+  // MiniMax 开放平台 —— M3.1-Flash 是当前一代：1M 上下文、思考深度可调
+  // （Claude 走 output_config.effort，OpenAI 走 reasoning_effort），且不能关闭思考。
+  // M3 是上一代：思考可开关，但深度不可调（上游不收 output_config）。
+  "minimax": {
+    "MiniMax-M3.1-Flash":         { vision: true, reasoning: true, thinkingFormat: "minimax-effort", thinkingCanDisable: false, contextWindow: 1000000, maxOutput: 128000, supportsOutputConfig: true },
+    "MiniMax-M3.1-Flash-Preview": { vision: true, reasoning: true, thinkingFormat: "minimax-effort", thinkingCanDisable: false, contextWindow: 1000000, maxOutput: 128000, supportsOutputConfig: true },
+    "MiniMax-M3":                 { vision: true, reasoning: true, thinkingFormat: "minimax-effort", contextWindow: 1000000, maxOutput: 128000 },
+  },
   // MiniMax Code (mcode) credits lane — Anthropic messages on mavis; thinking
-  // is adaptive effort via output_config (claude-adaptive). Limits from
-  // magpie's minimax plugin static catalog (live probes pending). M2.7 pair
+  // is adaptive effort via output_config (claude-adaptive). M2.7 pair
   // always thinks and takes no effort knob in MiniMax Code itself.
   "minimax-code": {
-    "MiniMax-M3.1-Flash-Preview": { vision: true, reasoning: true, thinkingFormat: "claude-adaptive", thinkingCanDisable: false, contextWindow: 512000, maxOutput: 128000 },
+    "MiniMax-M3.1-Flash":         { vision: true, reasoning: true, thinkingFormat: "claude-adaptive", thinkingCanDisable: false, contextWindow: 512000, maxOutput: 128000, supportsOutputConfig: true },
+    "MiniMax-M3.1-Flash-Preview": { vision: true, reasoning: true, thinkingFormat: "claude-adaptive", thinkingCanDisable: false, contextWindow: 512000, maxOutput: 128000, supportsOutputConfig: true },
     "MiniMax-M3":                 { vision: true, reasoning: true, thinkingFormat: "claude-adaptive", contextWindow: 512000, maxOutput: 128000 },
     "MiniMax-M2.7":               { reasoning: true, thinkingFormat: "claude-adaptive", thinkingCanDisable: false, contextWindow: 200000, maxOutput: 128000 },
     "MiniMax-M2.7-highspeed":     { reasoning: true, thinkingFormat: "claude-adaptive", thinkingCanDisable: false, contextWindow: 200000, maxOutput: 128000 },
@@ -451,6 +460,8 @@ PROVIDER_CAPABILITIES.dv = PROVIDER_CAPABILITIES["devin-cli"];
 PROVIDER_CAPABILITIES.devin = PROVIDER_CAPABILITIES["devin-cli"];
 // The global mcode site serves the same catalog — share the capability table.
 PROVIDER_CAPABILITIES["minimax-code-global"] = PROVIDER_CAPABILITIES["minimax-code"];
+// 国内站与国际站是同一套模型，只差 host。
+PROVIDER_CAPABILITIES["minimax-cn"] = PROVIDER_CAPABILITIES["minimax"];
 
 /**
  * Pattern fallback — glob (* = wildcard), matched case-insensitively and
@@ -599,6 +610,8 @@ export const PATTERN_CAPABILITIES = [
 
   // ── MiniMax (M3 = adaptive; M2.x cannot disable) ─────────────────
   { pattern: "*minimax*image*", caps: { imageOutput: true } },
+  // M3.1-Flash 要排在 *minimax-m3* 前面：它不能关闭思考，且 Claude 接口认 output_config.effort。
+  { pattern: "*minimax-m3.1-flash*", caps: { vision: true, reasoning: true, thinkingFormat: "minimax-effort", thinkingCanDisable: false, contextWindow: 1000000, maxOutput: 128000, supportsOutputConfig: true } },
   { pattern: "*minimax-m3*",    caps: { vision: true, reasoning: true, thinkingFormat: "minimax", contextWindow: 1000000, maxOutput: 131072 } },
   { pattern: "*minimax-m2.7*",  caps: { vision: true, reasoning: true, thinkingFormat: "minimax", thinkingCanDisable: false, contextWindow: 204800, maxOutput: 131072 } },
   { pattern: "*minimax-m2.5*",  caps: { vision: true, reasoning: true, thinkingFormat: "minimax", thinkingCanDisable: false, contextWindow: 204800, maxOutput: 131072 } },

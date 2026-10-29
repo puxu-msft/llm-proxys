@@ -493,8 +493,10 @@ export function hoistToolResultImages(body) {
 }
 
 export function prepareClaudeRequest(body, provider = null, apiKey = null, connectionId = null, rawHeaders = null, sessionId = null) {
-  // quirk: MiniMax's Claude-compatible endpoint rejects Anthropic's output_config (400 invalid params)
-  if (PROVIDERS[provider]?.quirks?.dropOutputConfig) {
+  const modelCaps = getCapabilitiesForModel(provider, body.model);
+  // quirk: MiniMax 的 Claude 兼容接口不收 Anthropic 的 output_config（400 invalid params）——
+  // 但 M3.1-Flash 收（它用 output_config.effort 调思考深度），所以按型号决定。
+  if (PROVIDERS[provider]?.quirks?.dropOutputConfig && !modelCaps.supportsOutputConfig) {
     delete body.output_config;
   }
 
@@ -511,7 +513,6 @@ export function prepareClaudeRequest(body, provider = null, apiKey = null, conne
   // Models whose API rejects thinking "disabled" and forced tool use with a 400
   // (Sonnet 5.5). Runs on every Claude-bound body, so OpenAI clients, native
   // passthrough and the provider-level "off" override are all covered.
-  const modelCaps = getCapabilitiesForModel(provider, body.model);
   if (modelCaps.thinkingOffType && body.thinking?.type === "disabled") {
     body.thinking = { type: modelCaps.thinkingOffType };
     // between_tools only accepts effort up to high.

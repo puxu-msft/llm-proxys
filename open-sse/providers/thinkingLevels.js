@@ -4,6 +4,7 @@ import { getCapabilitiesForModel } from "./capabilities.js";
 import { matchPattern } from "./pricing.js";
 import { resolveKiroEffortPath } from "../config/kiroConstants.js";
 import { getProviderModels } from "../config/providerModels.js";
+import { MINIMAX_THINKING_LEVELS } from "./minimax/constants.js";
 
 // Shared level sets (deduped) — verified against provider docs + wire in thinkingUnified.applyFormat.
 const L = {
@@ -94,10 +95,16 @@ const PATTERN_THINKING = [
   // always thinks (no none); M3 is switchable with none/high only, per the
   // magpie static catalog. M2.7 pair falls through to the claude-adaptive
   // set minus none (canDisable: false).
-  { provider: "minimax-code", pattern: "MiniMax-M3.1*", levels: ["low", "medium", "high", "xhigh", "max"] },
+  { provider: "minimax-code", pattern: "MiniMax-M3.1*", levels: MINIMAX_THINKING_LEVELS },
   { provider: "minimax-code", pattern: "MiniMax-M3", levels: ["none", "high"] },
-  { provider: "minimax-code-global", pattern: "MiniMax-M3.1*", levels: ["low", "medium", "high", "xhigh", "max"] },
+  { provider: "minimax-code-global", pattern: "MiniMax-M3.1*", levels: MINIMAX_THINKING_LEVELS },
   { provider: "minimax-code-global", pattern: "MiniMax-M3", levels: ["none", "high"] },
+  // MiniMax 开放平台：深度档位与 Code 通道一致
+  // （Claude 接口 output_config.effort，OpenAI 接口 reasoning_effort）。
+  { provider: "minimax", pattern: "MiniMax-M3.1*", levels: MINIMAX_THINKING_LEVELS },
+  { provider: "minimax", pattern: "MiniMax-M3", levels: ["none", "high"] },
+  { provider: "minimax-cn", pattern: "MiniMax-M3.1*", levels: MINIMAX_THINKING_LEVELS },
+  { provider: "minimax-cn", pattern: "MiniMax-M3", levels: ["none", "high"] },
 ];
 
 // OpenAI documents reasoning.effort "max" for GPT-5.6 and GPT-6 (#5186). The codex rows

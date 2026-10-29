@@ -376,6 +376,20 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels, display) {
       body.thinking = { type: none && canDisable ? "disabled" : "adaptive" };
       break;
     }
+    case "minimax-effort": {
+      // MiniMax OpenAI 兼容接口：思考默认开着，深度用 reasoning_effort
+      // （low|medium|high|xhigh|max）。"none" 会被上游拒（模型总是思考），
+      // 所以只能关掉能关的型号（M3），且要改用 thinking.type=disabled。
+      if (none && canDisable) {
+        delete body.reasoning_effort;
+        body.thinking = { type: "disabled" };
+        break;
+      }
+      const level = toLevel(eff);
+      // auto 不发这个字段：上游默认就是 max。
+      if (level && level !== "auto") body.reasoning_effort = level === "minimal" ? "low" : level;
+      break;
+    }
     case "hunyuan": {
       if (none && canDisable) { body.thinking = { type: "disabled" }; break; }
       const budget = toBudget(eff, caps.thinkingRange);

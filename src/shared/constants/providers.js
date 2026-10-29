@@ -28,6 +28,7 @@ function buildProviderEntry(r) {
     ...(r.hasFree ? { hasFree: true } : {}),
     ...(r.thinkingConfig ? { thinkingConfig: r.thinkingConfig } : {}),
     ...(r.regions ? { regions: r.regions, defaultRegion: r.defaultRegion } : {}),
+    ...(r.connectionFields ? { connectionFields: r.connectionFields } : {}),
     ...(r.hasProviderSpecificData ? { hasProviderSpecificData: true } : {}),
     ...(r.noAuth ? { noAuth: true } : {}),
     ...(r.passthroughModels ? { passthroughModels: true } : {}),
