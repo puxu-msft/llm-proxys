@@ -78,7 +78,7 @@ fi
 echo "==> starting $NAME"
 docker run -d --name "$NAME" --restart always \
   --network "$NETWORK" \
-  -p "127.0.0.1:$PORT:$PORT" \
+  -p "$PORT:$PORT" \
   --env-file "$ENV_FILE" \
   -v "$VOLUME:/app/data" \
   -e DATA_DIR=/app/data \
@@ -101,4 +101,4 @@ fi
 echo "==> headroom reachable from $NAME?"
 docker exec "$NAME" node -e "fetch('$HEADROOM_URL/').then(r=>console.log('   ok, status',r.status)).catch(e=>console.log('   NOT reachable:',e.message))" 2>/dev/null || echo "   could not probe"
 
-echo "==> deployed: http://127.0.0.1:$PORT (health 200)"
+echo "==> deployed: http://127.0.0.1:$PORT (bound 0.0.0.0, health 200)"

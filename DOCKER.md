@@ -17,7 +17,7 @@ Runs as a Linux container on the WSL2 side of Docker Desktop (`linux/amd64`).
 1. builds `9router:local` from this repo,
 2. smoke-tests it on `127.0.0.1:20129` with a throwaway container,
 3. stops the running `9router` and renames it to `9router-rollback-<timestamp>`,
-4. starts the new container on `127.0.0.1:20128`,
+4. starts the new container with `20128` published on all host interfaces (`0.0.0.0:20128`),
 5. waits for `/api/health` to return `200`.
 
 Data lives in the `9router-data` volume and survives every deploy. Secrets come from `.env` (git-ignored) — they are never baked into the image.
@@ -28,7 +28,7 @@ Data lives in the `9router-data` volume and survives every deploy. Secrets come 
 docker compose up -d --build
 ```
 
-`docker-compose.yml` builds from this repo into `9router:local`, reuses the `9router-data` volume, binds `127.0.0.1:20128`, and reads `.env`.
+`docker-compose.yml` builds from this repo into `9router:local`, reuses the `9router-data` volume, publishes `20128` on all interfaces, and reads `.env`.
 
 ## Manage container
 
