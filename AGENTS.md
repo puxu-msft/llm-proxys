@@ -16,7 +16,7 @@
 
 - **改动的行一律写中文**：新增或修改的注释、文档、说明都写中文，不写英文；未改动的原有英文内容保持不动。
 - **不要硬折行**：`.editorconfig` 设了 `max_line_length = off`。一句话、一段话、一个列表项就是一行，其余交给编辑器软折行；不要在 80/120 列处断行，非要断就断在语义边界（逗号、句号）。
-- 提交信息用中文写（Conventional Commits 风格，`gateway: ……` 这类说明用户看到什么）；不要求提交信息或提交本身干净、原子，允许随时 `commit --amend`、`rebase`、`push --force` 改写历史，改之前不需要额外备份。
+- 提交信息用中文写（Conventional Commits 风格，`gateway: ……` 这类说明用户看到什么）；不要求提交信息或提交本身干净、原子。改写历史要在**明确授权之后**才做：`commit --amend`、`rebase` 由用户点头再做，推送一律用 `git push --force-with-lease` 而不是 `--force`，改写前不需要额外备份。
 
 ## Subsystem design and review
 

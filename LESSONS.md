@@ -372,7 +372,7 @@ Two habits from them:
 - app.js 的预算在 2.5 天里被抬了四次，最后一次由 85eef5d87 抬到 1,269,000，期间 app.js 长了 53KB 而什么都没搬出去（#2710）；17557132c 没抬预算也满足了同一个上限。
 - 要抬就先搬点东西出去，或者按 owner 定的增长速率来。
 
-**提交信息不要求干净、原子：历史可以随时改写。** `commit --amend`、`rebase`、`push --force` 都随意，改之前不用额外备份；信息用中文写清改了什么、怎么验证的，就够了。
+**提交信息不要求干净、原子；改写历史要经授权。** 得到授权后 `commit --amend`、`rebase` 随意，推送用 `--force-with-lease`（不要用 `--force`），改写前不用额外备份；信息用中文写清改了什么、怎么验证的，就够了。
 
 **两个 session 永远不要在同一个 checkout 里提交** 自 10-18 起在代码规范里，范围已扩到一个 worktree 和它的日志，见 [Moved to the code standards](#moved-to-the-code-standards)。
 
