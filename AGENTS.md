@@ -12,12 +12,12 @@
 - 省掉一切上游协作流程：没有社区 PR 评审、署名或黑名单规则，没有 release / changelog 义务，不打版本 tag，不发布到 `yetone/magpie-releases`。本 fork 已移除发布类 workflow（release、docker、ui-preview、privacy-filter）；自更新和 Privacy 的 `pf-serve` 仍从上游 release 安装。
 - 仍然有效的是「怎么改代码」这部分：[代码规范](docs/code-standards.md)、[子系统设计参考](docs/subsystems/README.md) 和下面的 [经验教训](LESSONS.md)。这里没有评审环节，`make test`、`make test-ui` 和代码规范里的验收标准就是关口。
 
-## 本 fork 自己的书写规则
+## 本 fork 的做事原则
 
-- **改动的行一律写中文**：新增或修改的注释、文档、说明都写中文，不写英文；未改动的原有英文内容保持不动。
-- **不要硬折行**：`.editorconfig` 设了 `max_line_length = off`。一句话、一段话、一个列表项就是一行，其余交给编辑器软折行；不要在 80/120 列处断行，非要断就断在语义边界（逗号、句号）。
-- **放宽的要求不等于降低标准**：下面这些规则（不要求提交原子、允许在授权后改写历史等）是给人留余地，不是让你挑最省事的做法；能做到多好就做到多好。
-- 提交信息用中文写（Conventional Commits 风格，`gateway: ……` 这类说明用户看到什么）。改写历史要在**明确授权之后**才做：`commit --amend`、`rebase` 由用户点头再做，推送一律用 `git push --force-with-lease` 而不是 `--force`；有授权也不等于可以随便——该合并的合并、该拆的拆、说明写清楚，改写前不需要额外备份。
+- **只留可复用的原则，不记流水账**：这里写元方法；某一次具体指正的做法，处理完就够，不要再往文档里累一条。
+- **改动的行写中文、不硬折行**：新增或修改的注释与文档都写中文，原有英文不动；一句话、一段话、一个列表项各占一行，软折行交给编辑器（`.editorconfig` 的 `max_line_length = off`）。提交信息同样用中文。
+- **放宽的要求不等于降低标准**：留余地不是让你挑最省事的做法；能做到多好就做到多好——该合并的合并、该拆的拆、说明写清楚。
+- **不可逆的动作先确认，然后按最稳妥的方式做**：改写已推送的历史（`amend`／`rebase`／强推）要先取得明确授权，推送用 `git push --force-with-lease` 而不是 `--force`。
 
 ## Subsystem design and review
 
