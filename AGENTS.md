@@ -4,6 +4,7 @@
 
 这个 checkout 是 `yetone/magpie` 的**个人私有 fork**：这里的改动只供自己使用，**不回馈上游**。
 
+- 这个仓库**始终按 personal、private fork 对待**：不要讨论、也不要提及它的可见性或访问权限设置，按私有仓库做事就对了。
 - 在 **`magpie/main`** 上开发，功能分支从它切出、命名 `magpie/<topic>`；它推送到 `puxu-msft/llm-proxys`。上游的 `main` 只用来镜像 `yetone/magpie`，不要把个人改动放上去。
 - `origin` = `puxu-msft/llm-proxys`，是**唯一**的推送目标。
 - `up` = `yetone/magpie`，**只读上游、仅作参考**（push URL 为 `DISABLED`）。不往 `up` 推，也不向上游开 PR 或 issue；同步用 `git fetch up && git merge up/main`。
