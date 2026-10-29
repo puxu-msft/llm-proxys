@@ -33,7 +33,7 @@ npm run build && PORT=20128 HOSTNAME=0.0.0.0 npm run start           # productio
 ```
 - Bun variants: `npm run dev:bun` / `build:bun` / `start:bun`.
 - Default runtime port is **20128** (dashboard at `/dashboard`, API at `/v1`).
-- Lint: `npx eslint .` (config `eslint.config.mjs`, extends `eslint-config-next`).
+- Lint is **opt-in and deliberately not enabled** (config `eslint.config.mjs`, extends `eslint-config-next`). Run it by hand as `npx eslint .` if you want the `react-hooks/*`, `no-unused-vars` and Next conventions checked. Nothing enforces it: there is no CI job, no git hook, and no `lint` npm script, and Next 16 no longer lints during `next build` — so it can never block a dev run or the Docker deploy. The vitest suite is the enforced gate.
 
 CLI package (`cli/`):
 ```bash
