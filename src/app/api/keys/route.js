@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getApiKeys, createApiKey } from "@/lib/localDb";
+import { getApiKeys, createApiKey, getApiKeyByKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { validateCustomApiKey } from "@/shared/utils/apiKey";
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +17,32 @@ export async function GET() {
 }
 
 // POST /api/keys - Create new API key
+// A `key` may be supplied to store a hand-picked value (weak values allowed);
+// when omitted, a machine-bound key is generated as before.
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name } = body;
+    const { name, key } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    let customKey = null;
+    if (key !== undefined && key !== null && String(key).trim() !== "") {
+      const checked = validateCustomApiKey(key);
+      if (!checked.ok) {
+        return NextResponse.json({ error: checked.error }, { status: 400 });
+      }
+      if (await getApiKeyByKey(checked.value)) {
+        return NextResponse.json({ error: "This key value already exists" }, { status: 409 });
+      }
+      customKey = checked.value;
+    }
+
     // Always get machineId from server
     const machineId = await getConsistentMachineId();
-    const apiKey = await createApiKey(name, machineId);
+    const apiKey = await createApiKey(name, machineId, { key: customKey });
 
     return NextResponse.json({
       key: apiKey.key,

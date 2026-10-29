@@ -24,6 +24,11 @@ export default function APIPageClient({ machineId }) {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyValue, setNewKeyValue] = useState("");
+  const [keyFormError, setKeyFormError] = useState("");
+  const [editingKey, setEditingKey] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", key: "" });
+  const [editError, setEditError] = useState("");
   const [createdKey, setCreatedKey] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
 
@@ -617,12 +622,14 @@ export default function APIPageClient({ machineId }) {
 
   const handleCreateKey = async () => {
     if (!newKeyName.trim()) return;
+    setKeyFormError("");
 
     try {
+      const customKey = newKeyValue.trim();
       const res = await fetch("/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newKeyName }),
+        body: JSON.stringify({ name: newKeyName, key: customKey || undefined }),
       });
       const data = await res.json();
 
@@ -630,10 +637,46 @@ export default function APIPageClient({ machineId }) {
         setCreatedKey(data.key);
         await fetchData();
         setNewKeyName("");
+        setNewKeyValue("");
         setShowAddModal(false);
+        return;
       }
+      setKeyFormError(data.error || "Failed to create key");
     } catch (error) {
       console.log("Error creating key:", error);
+      setKeyFormError("Failed to create key");
+    }
+  };
+
+  const openEditKey = (apiKey) => {
+    setEditForm({ name: apiKey.name || "", key: apiKey.key || "" });
+    setEditError("");
+    setEditingKey(apiKey);
+  };
+
+  const handleSaveKeyEdit = async () => {
+    if (!editingKey) return;
+    if (!editForm.name.trim() || !editForm.key.trim()) {
+      setEditError("Name and key value are required");
+      return;
+    }
+    setEditError("");
+    try {
+      const res = await fetch(`/api/keys/${editingKey.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editForm.name.trim(), key: editForm.key }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.key) {
+        setKeys(prev => prev.map(k => k.id === editingKey.id ? data.key : k));
+        setEditingKey(null);
+        return;
+      }
+      setEditError(data.error || "Failed to save key");
+    } catch (error) {
+      console.log("Error saving key:", error);
+      setEditError("Failed to save key");
     }
   };
 
@@ -1090,6 +1133,13 @@ export default function APIPageClient({ machineId }) {
                     title={key.isActive ? "Pause key" : "Resume key"}
                   />
                   <button
+                    onClick={() => openEditKey(key)}
+                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded text-text-muted hover:text-primary opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                    title="Edit key"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                  <button
                     onClick={() => handleDeleteKey(key.id)}
                     className="p-2 hover:bg-red-500/10 rounded text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                   >
@@ -1109,6 +1159,8 @@ export default function APIPageClient({ machineId }) {
         onClose={() => {
           setShowAddModal(false);
           setNewKeyName("");
+          setNewKeyValue("");
+          setKeyFormError("");
         }}
       >
         <div className="flex flex-col gap-4">
@@ -1118,6 +1170,14 @@ export default function APIPageClient({ machineId }) {
             onChange={(e) => setNewKeyName(e.target.value)}
             placeholder="Production Key"
           />
+          <Input
+            label="Key Value"
+            value={newKeyValue}
+            onChange={(e) => setNewKeyValue(e.target.value)}
+            placeholder="sk-..."
+            hint="Leave blank to auto-generate. Any value is allowed, including short or weak ones."
+            error={keyFormError}
+          />
           <div className="flex gap-2">
             <Button onClick={handleCreateKey} fullWidth disabled={!newKeyName.trim()}>
               Create
@@ -1126,10 +1186,44 @@ export default function APIPageClient({ machineId }) {
               onClick={() => {
                 setShowAddModal(false);
                 setNewKeyName("");
+                setNewKeyValue("");
+                setKeyFormError("");
               }}
               variant="ghost"
               fullWidth
             >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Key Modal */}
+      <Modal
+        isOpen={!!editingKey}
+        title="Edit API Key"
+        onClose={() => setEditingKey(null)}
+      >
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Key Name"
+            value={editForm.name}
+            onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+            placeholder="Production Key"
+          />
+          <Input
+            label="Key Value"
+            value={editForm.key}
+            onChange={(e) => setEditForm((f) => ({ ...f, key: e.target.value }))}
+            placeholder="sk-..."
+            hint="Any value is allowed, including short or weak ones."
+            error={editError}
+          />
+          <div className="flex gap-2">
+            <Button onClick={handleSaveKeyEdit} fullWidth disabled={!editForm.name.trim() || !editForm.key.trim()}>
+              Save
+            </Button>
+            <Button onClick={() => setEditingKey(null)} variant="ghost" fullWidth>
               Cancel
             </Button>
           </div>

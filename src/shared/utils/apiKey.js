@@ -96,3 +96,23 @@ export function isNewFormatKey(apiKey) {
   return parsed?.isNewFormat === true;
 }
 
+// Upper bound for a manually supplied API key. Key *strength* is deliberately
+// not enforced — short, low-entropy values (e.g. "sk-dummy") are accepted for
+// local/internal use. Only values that cannot travel as an HTTP credential are
+// refused: empty, whitespace-bearing (breaks `Authorization: Bearer …`), or absurdly long.
+export const CUSTOM_API_KEY_MAX_LENGTH = 256;
+
+/**
+ * Validate a manually supplied API key value (create or edit).
+ * @param {string} value
+ * @returns {{ ok: true, value: string } | { ok: false, error: string }}
+ */
+export function validateCustomApiKey(value) {
+  if (typeof value !== "string") return { ok: false, error: "key must be a string" };
+  const key = value.trim();
+  if (!key) return { ok: false, error: "key must not be empty" };
+  if (/\s/.test(key)) return { ok: false, error: "key must not contain whitespace" };
+  if (key.length > CUSTOM_API_KEY_MAX_LENGTH) return { ok: false, error: `key must be at most ${CUSTOM_API_KEY_MAX_LENGTH} characters` };
+  return { ok: true, value: key };
+}
+

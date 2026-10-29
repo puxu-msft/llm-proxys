@@ -36,16 +36,28 @@ export async function getApiKeyByKey(key) {
   return rowToKey(row);
 }
 
-export async function createApiKey(name, machineId) {
-  if (!machineId) throw new Error("machineId is required");
+// Create a key. With no `options.key` a machine-bound key is generated; pass a
+// value to store a hand-picked one instead (its `machineId` is left unset, since
+// it is not derived from the machine). Callers are expected to have validated
+// `options.key` — the /api/keys route uses validateCustomApiKey.
+export async function createApiKey(name, machineId, options = {}) {
   const db = await getAdapter();
-  const { generateApiKeyWithMachine } = await import("@/shared/utils/apiKey");
-  const result = generateApiKeyWithMachine(machineId);
+  const customKey = options.key ? String(options.key).trim() : "";
+  let key, keyMachineId;
+  if (customKey) {
+    key = customKey;
+    keyMachineId = null;
+  } else {
+    if (!machineId) throw new Error("machineId is required");
+    const { generateApiKeyWithMachine } = await import("@/shared/utils/apiKey");
+    key = generateApiKeyWithMachine(machineId).key;
+    keyMachineId = machineId;
+  }
   const apiKey = {
     id: uuidv4(),
     name,
-    key: result.key,
-    machineId,
+    key,
+    machineId: keyMachineId,
     isActive: true,
     createdAt: new Date().toISOString(),
     access: { restricted: false, allow: [] },
