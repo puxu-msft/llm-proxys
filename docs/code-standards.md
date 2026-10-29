@@ -137,7 +137,7 @@
 
 commit 信息写中文，先点出改动的区域，再说用户看到什么，用平实的行为语言写：`gateway: a 429 that says the balance is spent is out of credit, not a rate limit`。
 
-本 fork 不要求提交信息或提交本身干净、原子：一件事放几个 commit、几件事合成一个 commit，都按当时的节奏来；正文里能看出怎么验证的、或哪个测试去掉改动会失败，就够了。改写历史要**在明确授权之后**才做——`commit --amend`、`rebase` 由用户点头再做，推送用 `git push --force-with-lease`（不要用 `--force`），改写前不需要额外备份。
+本 fork 不要求提交信息或提交本身干净、原子：一件事放几个 commit、几件事合成一个 commit，都按当时的节奏来；正文里能看出怎么验证的、或哪个测试去掉改动会失败，就够了。改写历史要在**明确授权之后**才做——`commit --amend`、`rebase` 由用户点头再做，推送用 `git push --force-with-lease`（不要用 `--force`）；得到授权也不等于可以随便，能做好就做好（该合并的合并、该拆的拆、说明写清楚），改写前不需要额外备份。
 
 A checkout, a worktree and the logs in it belong to the session that made
 them. Work in a worktree of your own (`git worktree add --detach`), never
